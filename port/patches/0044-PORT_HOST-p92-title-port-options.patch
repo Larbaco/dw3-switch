@@ -16,8 +16,8 @@ port/options without setting TitleMenuTask.choice or leaveTitle. Triangle
 +#endif
  
  /* The menu's sprites: the European version has them for each language */
- #if VERSION_US
-@@ -115,6 +118,17 @@
+ #if VERSION_US || VERSION_JP
+@@ -115,6 +118,17 @@ static inline void runOptions(TitleMenuTask *task) {
          task->nextSubstate(task);
          break;
      case 1:
@@ -35,7 +35,7 @@ port/options without setting TitleMenuTask.choice or leaveTitle. Triangle
          if (PAD_PRESSED(PAD_UP) || PAD_REPEATED(PAD_UP)) {
              if (task->selection != 0) {
                  SOUND.playSound(SOUND_CURSOR);
-@@ -174,11 +188,24 @@
+@@ -174,11 +188,24 @@ void STDWTITL_tickMenu(TitleMenuTask *task) {
          break;
      case TASK_DONE:
          runOptions(task);

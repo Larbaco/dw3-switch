@@ -31,7 +31,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
  
  /* A partner's stats with its equipment, as main's computeStats gives them: the
     weapons' attack (STAT_STRENGTH), the armor's defense (STAT_DEFENSE) and the
-@@ -389,7 +392,7 @@
+@@ -389,7 +392,7 @@ void STITSHOP_createInfoWindows(ShopInfo *info, ShopInfoWindows *win) {
              win->partners[i].changes[7] = createTextWindow(info->layer, 1, x + 0x63, 0xD6);
              column++;
          }
@@ -40,7 +40,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
      }
  }
  
-@@ -491,9 +494,9 @@
+@@ -491,9 +494,9 @@ void STITSHOP_drawStatsPage(ShopInfo *info, ShopInfoWindows *win) {
      if (info->panels[1].level != 0) {
          if (info->panels[1].level != ONE) {
              sprite.setScale(info->panels[1].level, ONE, ONE);
@@ -52,7 +52,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
      }
      if (info->panels[3].level != 0) {
          sprite.setScale(ONE, info->panels[3].level, ONE);
-@@ -787,14 +790,15 @@
+@@ -787,18 +790,19 @@ void STITSHOP_updateInfo(ShopInfo *info, ShopInfoWindows *win) {
          if (info->panels[0].level != 0) {
              if (info->panels[0].level != ONE) {
                  sprite.setScale(info->panels[0].level, ONE, ONE);
@@ -69,11 +69,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
 +                        offset + STITSHOP_lineY(info, 0x6C));
          }
          if (info->panels[2].level != 0) {
-             if (info->panels[2].level != ONE) {
-@@ -803,7 +807,7 @@
-             } else {
-                 sprite.setScale(ONE, ONE, ONE);
-             }
+             STRETCH_SPRITE_V(sprite, info->panels[2].level, 0xA0, offset + 0xAE);
 -            sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 3, 0, offset + 0x9C);
 +            sprite.draw(DW3_MENU_BAND(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 3, 160), 3, 0, offset + 0x9C);
          }
@@ -91,7 +87,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
  
  /* Creates the item list's windows: 14 items in two columns, the page number, the
     L1 and R1 labels (lower when selling) and the cursor */
-@@ -124,7 +127,8 @@
+@@ -124,7 +127,8 @@ void STITSHOP_drawItemList(ShopItemList *list) {
              }
          }
          sprite.setTexture(0x280, 0x100);
@@ -126,43 +122,30 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
      win->cursor->setVisible(win->cursor, 0);
  }
  
-@@ -40,29 +43,29 @@
+@@ -38,16 +41,16 @@ void STITSHOP_drawShop(ItemShop *shop, ItemShopWindows *win) {
+         sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 1, 0x16, 0x12);
+     }
      if (shop->panels[1].level != 0) {
-         if (shop->panels[1].level != ONE) {
-             sprite.setScale(shop->panels[1].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x18);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x18);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, shop->panels[1].level, 0x140, 0x18);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 2, 0xD6, 0xF);
++        STRETCH_SPRITE(sprite, shop->panels[1].level, DW3_MENU_RIGHT(0x140), 0x18);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 2, DW3_MENU_RIGHT(0xD6), 0xF);
      }
      if (shop->panels[2].level != 0) {
-         if (shop->panels[2].level != ONE) {
-             sprite.setScale(shop->panels[2].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x3B);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x3B);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, shop->panels[2].level, 0x140, 0x3B);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 5, 0xA9, 0x26);
++        STRETCH_SPRITE(sprite, shop->panels[2].level, DW3_MENU_RIGHT(0x140), 0x3B);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 5, DW3_MENU_RIGHT(0xA9), 0x26);
      }
      if (shop->panels[3].level != 0) {
-         if (shop->panels[3].level != ONE) {
-             sprite.setScale(shop->panels[3].level, ONE, ONE);
--            sprite.setPivot(0x140, 0xD2);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0xD2);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, shop->panels[3].level, 0x140, 0xD2);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0, 0xC6, 0xC4);
++        STRETCH_SPRITE(sprite, shop->panels[3].level, DW3_MENU_RIGHT(0x140), 0xD2);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0, DW3_MENU_RIGHT(0xC6), 0xC4);
      }
      sprite.setLayerId(shop->layer, 7);
      if (shop->bgTick != 0) {
-@@ -127,7 +130,7 @@
+@@ -112,7 +115,7 @@ void STITSHOP_runShop(ItemShop *shop, ItemShopWindows *win) {
          }
          if (choice != shop->choice) {
              SOUND.playSound(SOUND_CURSOR);
@@ -201,7 +184,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
      win->cursor->setVisible(win->cursor, 0);
  }
  
-@@ -55,11 +58,11 @@
+@@ -55,11 +58,11 @@ void STITSHOP_drawBuy(ShopBuy *buy, ShopBuyWindows *win) {
      if (buy->panels[0].level != 0) {
          sprite.setScale(buy->panels[0].level, ONE, ONE);
          if (buy->panels[0].level != ONE) {
@@ -216,7 +199,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
          } else {
              if (GFX.funcs.getTime() - buy->blinkTime >= 9) {
                  buy->blinkTime = GFX.funcs.getTime();
-@@ -67,47 +70,47 @@
+@@ -67,32 +70,32 @@ void STITSHOP_drawBuy(ShopBuy *buy, ShopBuyWindows *win) {
              }
              if (buy->blink) {
                  if (buy->quantity < buy->max) {
@@ -233,14 +216,9 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
 +        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0xB, DW3_MENU_RIGHT(0xF6), 0x4F);
      }
      if (buy->panels[1].level != 0) {
-         if (buy->panels[1].level != ONE) {
-             sprite.setScale(buy->panels[1].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x32);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x32);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, buy->panels[1].level, 0x140, 0x32);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, 0x7B, 0x26);
++        STRETCH_SPRITE(sprite, buy->panels[1].level, DW3_MENU_RIGHT(0x140), 0x32);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, DW3_MENU_RIGHT(0x7B), 0x26);
          if (buy->panels[1].level != ONE) {
 -            sprite.setPivot(0x140, 0x57);
@@ -251,31 +229,21 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
      }
      if (buy->panels[2].level != 0) {
          sprite.setLayerId(buy->layer, buy->depth - 2);
-         if (buy->panels[2].level != ONE) {
-             sprite.setScale(buy->panels[2].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x32);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x32);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, buy->panels[2].level, 0x140, 0x32);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, 0x7B, 0x26);
++        STRETCH_SPRITE(sprite, buy->panels[2].level, DW3_MENU_RIGHT(0x140), 0x32);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, DW3_MENU_RIGHT(0x7B), 0x26);
      }
      if (buy->panels[3].level != 0) {
          sprite.setLayerId(buy->layer, buy->depth - 2);
-         if (buy->panels[3].level != ONE) {
-             sprite.setScale(buy->panels[3].level, ONE, ONE);
--            sprite.setPivot(0x140, 0x32);
-+            sprite.setPivot(DW3_MENU_RIGHT(0x140), 0x32);
-         } else {
-             sprite.setScale(ONE, ONE, ONE);
-         }
+-        STRETCH_SPRITE(sprite, buy->panels[3].level, 0x140, 0x32);
 -        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, 0x7B, 0x26);
++        STRETCH_SPRITE(sprite, buy->panels[3].level, DW3_MENU_RIGHT(0x140), 0x32);
 +        sprite.draw(FILE_CACHE.getEntry(FILE_SHOP_SPRITES << 16), 0x15, DW3_MENU_RIGHT(0x7B), 0x26);
      }
      if (buy->markerShown) {
          if (GFX.funcs.getTime() - buy->markerTime >= 9) {
-@@ -223,7 +226,7 @@
+@@ -208,7 +211,7 @@ static inline void STITSHOP_confirmBuy(ShopBuy *buy, ShopBuyWindows *win) {
      }
      if (old != buy->choice) {
          SOUND.playSound(SOUND_CURSOR);
@@ -284,7 +252,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
      } else if (win->info->shown && PAD_PRESSED(PAD_CROSS)) {
          SOUND.playSound(SOUND_SELECT);
          buy->setSubstate(buy, 20);
-@@ -290,7 +293,7 @@
+@@ -275,7 +278,7 @@ static inline void STITSHOP_confirmEquip(ShopBuy *buy, ShopBuyWindows *win) {
      }
      if (old != buy->choice) {
          SOUND.playSound(SOUND_CURSOR);
@@ -293,7 +261,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
      }
      if (PAD_PRESSED(PAD_CROSS)) {
          SOUND.playSound(SOUND_SELECT);
-@@ -367,7 +370,7 @@
+@@ -352,7 +355,7 @@ static inline void STITSHOP_openBuyTotal(ShopBuy *buy, ShopBuyWindows *win) {
      if (STITSHOP_funcs.updateFade(&buy->panels[1]) != 0) {
          STITSHOP_showBuyTotal(buy, win, 1);
          buy->choice = 0;
@@ -302,7 +270,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
          win->cursor->setVisible(win->cursor, 1);
          buy->substate++;
      }
-@@ -382,7 +385,7 @@
+@@ -367,7 +370,7 @@ static inline void STITSHOP_openEquipQuestion(ShopBuy *buy, ShopBuyWindows *win)
          win->yes->setString(win->yes, FILE_CACHE.load(TEXT_FILE(TEXT_ITEM_SHOP)), 0x16);
          win->no->setString(win->no, FILE_CACHE.load(TEXT_FILE(TEXT_ITEM_SHOP)), 0x17);
          buy->choice = 0;
@@ -311,7 +279,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
          win->cursor->setVisible(win->cursor, 1);
          buy->substate++;
      }
-@@ -713,15 +716,15 @@
+@@ -698,15 +701,15 @@ void STITSHOP_createSellWindows(ShopSell *sell, ShopSellWindows *win) {
      win->cursor = createCursor(sell->layer, sell->depth - 1, 0, 0xB0);
      win->cursor->setVisible(win->cursor, 0);
      for (i = 0; i < 4; i++) {
@@ -335,7 +303,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
  }
  
  /* Draws the selling screen's frames, and the quantity's blinking arrows */
-@@ -734,26 +737,26 @@
+@@ -719,26 +722,26 @@ void STITSHOP_drawSell(ShopSell *sell, ShopSellWindows *win) {
          sprite.setLayerId(sell->layer, 1);
          if (sell->panels[3].level != ONE) {
              sprite.setScale(sell->panels[3].level, ONE, ONE);
@@ -369,7 +337,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
          } else {
              if (GFX.funcs.getTime() - sell->blinkTime >= 9) {
                  sell->blinkTime = GFX.funcs.getTime();
-@@ -761,32 +764,32 @@
+@@ -746,32 +749,32 @@ void STITSHOP_drawSell(ShopSell *sell, ShopSellWindows *win) {
              }
              if (sell->blink) {
                  if (sell->quantity < sell->max) {
@@ -411,7 +379,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
      }
  }
  
-@@ -799,7 +802,7 @@
+@@ -784,7 +787,7 @@ static inline void STITSHOP_openSellTypes(ShopSell *sell, ShopSellWindows *win)
          for (i = 0; i < 4; i++) {
              win->types[i]->setString(win->types[i], FILE_CACHE.load(TEXT_FILE(TEXT_ITEM_SHOP)), i + 0x1D);
          }
@@ -420,7 +388,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
          win->cursor->setVisible(win->cursor, 1);
          sell->substate++;
      }
-@@ -822,7 +825,7 @@
+@@ -807,7 +810,7 @@ static inline void STITSHOP_chooseSellType(ShopSell *sell, ShopSellWindows *win)
      }
      if (old != sell->type) {
          SOUND.playSound(SOUND_CURSOR);
@@ -429,7 +397,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
      }
      if (PAD_PRESSED(PAD_CROSS)) {
          SOUND.playSound(SOUND_SELECT);
-@@ -921,7 +924,7 @@
+@@ -906,7 +909,7 @@ static inline void STITSHOP_openSellTotal(ShopSell *sell, ShopSellWindows *win)
          win->yes->setString(win->yes, FILE_CACHE.load(TEXT_FILE(TEXT_ITEM_SHOP)), 0x22);
          win->no->setString(win->no, FILE_CACHE.load(TEXT_FILE(TEXT_ITEM_SHOP)), 0x14);
          sell->choice = 0;
@@ -438,7 +406,7 @@ gutter (DW3_MENU_LEFT / DW3_MENU_RIGHT are the PS1 values with widescreen off).
          win->cursor->setVisible(win->cursor, 1);
          sell->substate++;
      }
-@@ -940,7 +943,7 @@
+@@ -925,7 +928,7 @@ static inline void STITSHOP_confirmSell(ShopSell *sell, ShopSellWindows *win) {
      }
      if (old != sell->choice) {
          SOUND.playSound(SOUND_CURSOR);

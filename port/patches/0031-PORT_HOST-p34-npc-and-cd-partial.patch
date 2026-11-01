@@ -6,7 +6,7 @@ DW3_FORCE_NPC_ACTION runs FLAGS_00.applyAction (0x7A/0x94/0x7C leaveField).
 
 --- a/src/engine/file/cd_reader.c
 +++ b/src/engine/file/cd_reader.c
-@@ -134,16 +134,17 @@
+@@ -134,16 +134,17 @@ void readFile(s32 file, s32 offset, s32 size, void *buffer, s32 *done) {
      }
      CD_READER.sectorCount = sectorCount;
      CD_READER.state = CD_READ_IDLE;
@@ -30,7 +30,7 @@ DW3_FORCE_NPC_ACTION runs FLAGS_00.applyAction (0x7A/0x94/0x7C leaveField).
      }
 --- a/src/field/field_mode/field.c
 +++ b/src/field/field_mode/field.c
-@@ -513,6 +513,33 @@
+@@ -513,6 +513,33 @@ static inline void openFieldMenu(FieldTask *task, FieldChildren *children) {
                      task->nextSubstate(task);
                      break;
                  }
@@ -63,4 +63,4 @@ DW3_FORCE_NPC_ACTION runs FLAGS_00.applyAction (0x7A/0x94/0x7C leaveField).
 +                }
              }
  #endif
-             if (GAME.progress < 4 || !(PAD.getPressed(0) & (1 << PAD_START))) {
+             if (GAME.progress < STORY_GENJI_BEATEN || !(PAD.getPressed(0) & (1 << PAD_START))) {

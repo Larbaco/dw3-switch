@@ -9,7 +9,7 @@ DW3_START_MODE still overrides both.
 diff -ruN a/src/engine/game/state.c b/src/engine/game/state.c
 --- a/src/engine/game/state.c
 +++ b/src/engine/game/state.c
-@@ -10,9 +10,16 @@
+@@ -10,9 +10,16 @@ long strtol(const char *nptr, char **endptr, int base);
  void newGame(void) {
      HEAP.zero(&GAME, GAME_SAVE_SIZE);
  #if PORT_HOST
@@ -23,6 +23,6 @@ diff -ruN a/src/engine/game/state.c b/src/engine/game/state.c
      GAME.mode = MODE_TITLE;
      GAME.nextMode = MODE_TITLE;
 +#endif
- #elif VERSION_US
+ #elif VERSION_US || VERSION_JP
      GAME.mode = MODE_OPENING;
      GAME.nextMode = MODE_OPENING;

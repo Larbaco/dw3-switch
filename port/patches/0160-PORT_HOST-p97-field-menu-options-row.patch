@@ -18,6 +18,17 @@ panel's bottom edge is covered and redrawn lower by drawFieldMenuPanelRow,
 now for any number of extra rows (patch 0123 drew exactly one).
 FieldMenuWindows.options grows from seven to eight windows (PORT_HOST only).
 
+--- a/include/engine/menu.h
++++ b/include/engine/menu.h
+@@ -94,7 +94,7 @@ typedef struct FieldMenuWindows {
+     /* 0x04 */ TextWindow *moneyLabel;
+     /* 0x08 */ TextWindow *money;
+ #if PORT_HOST
+-    /* 0x0C */ TextWindow *options[7]; /* P6.27: one more for Return to title */
++    /* 0x0C */ TextWindow *options[8]; /* P6.27 / P9.7: two more, Options and Return to title */
+ #else
+     /* 0x0C */ TextWindow *options[6];
+ #endif
 --- a/src/engine/menu/field_menu.c
 +++ b/src/engine/menu/field_menu.c
 @@ -5,6 +5,7 @@
@@ -28,7 +39,7 @@ FieldMenuWindows.options grows from seven to eight windows (PORT_HOST only).
  /* P6.27: language of the Return to title row (the EU disc's LANGUAGE; the US
     disc is English). */
  #if VERSION_EU
-@@ -180,6 +181,11 @@
+@@ -180,6 +181,11 @@ static inline void openFieldMenu(FieldMenu *task, FieldMenuWindows *win) {
      if (dw3_port_field_return_enabled()) {
          task->count++;
      }
@@ -40,7 +51,7 @@ FieldMenuWindows.options grows from seven to eight windows (PORT_HOST only).
  #endif
      if (getFieldZone() >= 0) {
          task->option2Enabled = 1;
-@@ -189,16 +195,35 @@
+@@ -189,16 +195,35 @@ static inline void openFieldMenu(FieldMenu *task, FieldMenuWindows *win) {
      createFieldMenuWindows(task, win);
  }
  
@@ -77,7 +88,7 @@ FieldMenuWindows.options grows from seven to eight windows (PORT_HOST only).
  #endif
          win->options[task->counter]->setString(win->options[task->counter], FILE_CACHE.load(TEXT_FILE(TEXT_STATUS)),
                                    FIELD_MENU_OPTIONS[task->extraOption][task->counter]);
-@@ -249,12 +274,18 @@
+@@ -249,12 +274,18 @@ static inline void chooseFieldMenuOption(FieldMenu *task, FieldMenuWindows *win)
              return;
          }
  #if PORT_HOST
@@ -97,7 +108,7 @@ FieldMenuWindows.options grows from seven to eight windows (PORT_HOST only).
  #endif
          done = 1;
          if (GAME.funcs.getMode() == MODE_STATUS) {
-@@ -384,55 +415,60 @@
+@@ -384,55 +415,60 @@ static inline void drawFieldMenuFade(FieldMenu *task) {
  }
  
  #if PORT_HOST
@@ -179,7 +190,7 @@ FieldMenuWindows.options grows from seven to eight windows (PORT_HOST only).
      setWH(tile, x1 - x0 - 3, 2);
      addPrim(ot, tile);
      tile++;
-@@ -477,6 +513,11 @@
+@@ -477,6 +513,11 @@ void updateFieldMenu(FieldMenu *task, FieldMenuWindows *win) {
              break;
          case 3:
  #if PORT_HOST
@@ -191,7 +202,7 @@ FieldMenuWindows.options grows from seven to eight windows (PORT_HOST only).
              if (dw3_port_confirm_is_open()) {
                  /* P6.27: the Yes / No window answers; the menu waits. */
                  dw3_port_confirm_tick();
-@@ -543,21 +584,22 @@
+@@ -533,21 +574,22 @@ void updateFieldMenu(FieldMenu *task, FieldMenuWindows *win) {
          }
          if (task->panels[1].level != 0) {
  #if PORT_HOST
@@ -220,16 +231,5 @@ FieldMenuWindows.options grows from seven to eight windows (PORT_HOST only).
 -            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - (portRows > 0 ? 1 : 0), DW3_MENU_RIGHT(0xA8), 0x28);
 +            obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - (task->count > 5 ? 1 : 0), DW3_MENU_RIGHT(0xA8), 0x28);
  #else
-             if (task->panels[1].level != ONE) {
-                 obj.setScale(task->panels[1].level, ONE, ONE);
---- a/include/engine/menu.h
-+++ b/include/engine/menu.h
-@@ -94,7 +94,7 @@
-     /* 0x04 */ TextWindow *moneyLabel;
-     /* 0x08 */ TextWindow *money;
- #if PORT_HOST
--    /* 0x0C */ TextWindow *options[7]; /* P6.27: one more for Return to title */
-+    /* 0x0C */ TextWindow *options[8]; /* P6.27 / P9.7: two more, Options and Return to title */
- #else
-     /* 0x0C */ TextWindow *options[6];
- #endif
+             STRETCH_SPRITE(obj, task->panels[1].level, DW3_MENU_RIGHT(0x140), 0x52);
+             obj.draw(FILE_CACHE.getEntry(FILE_MENU_SPRITES << 16), 0x1C - task->extraOption, DW3_MENU_RIGHT(0xA8), 0x28);

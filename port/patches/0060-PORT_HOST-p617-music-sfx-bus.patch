@@ -17,18 +17,18 @@ changes). With both volumes at the default the mix is unchanged.
 +#include "port_audio.h"
  #endif
  
- /* Each bank's files (SOUND_BANK_FILES[id]) */
-@@ -262,6 +263,10 @@
+ /* Each bank's files (SOUND_BANK_FILES[id]), numbered in the Japanese disc as
+@@ -262,6 +263,10 @@ short playSound(s32 packed) {
+                     s_sepPlayLog++;
                  }
              }
- #endif
++#endif
 +#if PORT_HOST
 +            /* P6.17: tell the mixer whether this track is music (exclusive) */
 +            dw3_port_audio_note_sequence(SOUND.banks[slot].seqs[seq], sep, exclusive);
-+#endif
+ #endif
              id = sep;
              SsSepStop(SOUND.banks[slot].seqs[seq], id);
-             SsSepSetVol(SOUND.banks[slot].seqs[seq], id, SOUND_VOLUME_MAX, SOUND_VOLUME_MAX);
 --- a/src/engine/system/main.c
 +++ b/src/engine/system/main.c
 @@ -5,6 +5,7 @@
@@ -39,7 +39,7 @@ changes). With both volumes at the default the mix is unchanged.
  #include "port_restart.h"
  #include "port_turbo.h"
  #include "port_widescreen.h"
-@@ -111,6 +112,7 @@
+@@ -111,6 +112,7 @@ int main(void) {
          PAD.update();
  #if PORT_HOST
          dw3_port_turbo_poll();

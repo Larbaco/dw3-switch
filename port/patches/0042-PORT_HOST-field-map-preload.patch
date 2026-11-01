@@ -9,7 +9,7 @@ call cdfs_poll.
 
 --- a/src/engine/file/cd_reader.c
 +++ b/src/engine/file/cd_reader.c
-@@ -96,12 +96,6 @@
+@@ -96,12 +96,6 @@ void cdSyncCallback(s32 status, u_char *result) {
  
  /* Whether the CD reader is busy */
  s32 isCdReading(void) {
@@ -22,7 +22,7 @@ call cdfs_poll.
      return CD_READER.state != CD_READ_IDLE;
  }
  
-@@ -148,8 +142,8 @@
+@@ -148,8 +142,8 @@ void readFile(s32 file, s32 offset, s32 size, void *buffer, s32 *done) {
      if (fileSize == (uint32_t)-1) {
          return;
      }
@@ -45,7 +45,7 @@ call cdfs_poll.
  
  /* The file cache */
  FileCache FILE_CACHE = {
-@@ -168,11 +165,6 @@
+@@ -168,11 +165,6 @@ void *loadFile(u32 file) {
          return slot->data;
      }
      while (CD_READER.isBusy() != 0) {
@@ -69,7 +69,7 @@ call cdfs_poll.
  
  /* Small variables, addressed through $gp (see the Makefile) */
  static s32 GFX_STARTED = 0;
-@@ -16,10 +13,6 @@
+@@ -16,10 +13,6 @@ static s32 FLIP_PENDING;
   * finished buffer and ticks the music
   */
  void vsyncCallback(void) {
@@ -77,6 +77,6 @@ call cdfs_poll.
 -    /* One field tile per frame. Runs once per VSync, before the next update. */
 -    cdfs_poll();
 -#endif
- #if VERSION_US
-     GFX.timeCounter += VSYNC_STEP_NTSC;
-     GFX.frameTimeCounter += VSYNC_STEP_NTSC;
+ #if PAL_VIDEO
+     if (NTSC_MODE) {
+         GFX.timeCounter += VSYNC_STEP_NTSC;
