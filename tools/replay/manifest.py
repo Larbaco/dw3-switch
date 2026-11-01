@@ -3833,7 +3833,7 @@ _add(Scenario("eu-res2x-row", "eu", "full", timeout=300,
               phases=("eu-options-res-p1", "eu-options-res-p2"),
               expect_log=((0, r"dw3-port-options: internal resolution 2x(?s:.*)"
                               r"dw3-res: set 2x \(pc\)(?s:.*)"
-                              r"dw3-port-options: native res while turbo off"),
+                              r"dw3-port-options: native res while turbo disabled"),
                           (1, r"dw3-options: file keys .* internal_res=1 internal_res_turbo=0(?s:.*)"
                               r"dw3-res: set 2x \(pc\)(?s:.*)"
                               r"dw3-port-options: internal resolution 3x(?s:.*)"

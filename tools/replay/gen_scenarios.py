@@ -3831,8 +3831,8 @@ def res_switch(version):
     return r
 
 
-RES_MOVIE_SHOT = 14650   # the opening's movie plays around frames 14400-14900
-RES_MOVIE_END = 14700
+RES_MOVIE_SHOT = 14000   # EU: the opening's second movie (MOVIED01) starts just after frame 13800
+RES_MOVIE_END = 14050    # and runs about 450 frames; the shot is 200 frames into it
 
 
 def res_movie(version):
@@ -4043,7 +4043,8 @@ def main(out):
         (out / f"{v}-battle-options-ref.rec").write_text(
             battle_options_ref(v).text(True))
         (out / f"{v}-res-switch.rec").write_text(res_switch(v).text(True))
-        (out / f"{v}-res-movie.rec").write_text(res_movie(v).text(True))
+        if v == "eu":
+            (out / f"{v}-res-movie.rec").write_text(res_movie(v).text(True))
         for phase in (1, 2):
             (out / f"{v}-options-res-p{phase}.rec").write_text(
                 options_res(v, phase).text(True))
