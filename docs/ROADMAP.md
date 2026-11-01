@@ -1154,8 +1154,13 @@ gate, which stays open.
   1 to 6 ms handheld, 3 to 11 MiB), not yet measured on the OLED. Design: Options rows
   "Internal resolution" (1x/2x/3x) and "Native res while turbo" (default on, logs
   `dw3-res: turbo on -> 1x` / `turbo off -> Nx`), replays pinned at 1x plus a small 2x
-  family, six build phases of about 12 to 16 worker days. Step 2 (the build) starts with
-  an OLED measurement build and waits for D1 to D5. Owner questions are in the doc.
+  family, six build phases of about 12 to 16 worker days. Step 2 (the build) waits for D1 to D5
+  and for the OLED numbers. **Owner answers 2026-11-01** (scales 1x/2x/3x with a per-mode clamp
+  table from an OLED measurement; "Native res while turbo" default ON and skip the mesh frames
+  turbo never shows; a finer dither grid; investigate the field too) are recorded in the doc.
+  **Phase 0 (2026-11-01):** an OLED measurement NRO (`DW3_NX_RES_PROBE`, `dw3-res-probe:` log
+  line, `tools/res_probe_summary.py`) and the field investigation (doc section 10). Open: the OLED
+  rows R0.1 to R0.4 (owner), then the clamp table.
 
 - **P6.12–P6.35** (except P6.15, P6.17, P6.18, P6.20 and P6.22, which have their own entries) are goal notes, kept with their ids in
   [Backlog / future goals](#backlog--future-goals).

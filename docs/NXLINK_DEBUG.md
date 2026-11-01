@@ -118,6 +118,15 @@ A healthy movie is `fc_skipped=0` with `frame dt us=` ~4000000 (15 fps).
 the bridge lock, so it measures contention, not corruption.
 [P3.7_MOVIE_PACING_DIAGNOSTICS.md](P3.7_MOVIE_PACING_DIAGNOSTICS.md).
 
+## Resolution probe (`DW3_NX_RES_PROBE`, P6.11 phase 0)
+
+A development test aid, off unless baked with `DW3_NX_TEST_ENV="DW3_NX_RES_PROBE=1"`. One
+`dw3-res-probe: v=1 ...` line per 60 game frames (GPU and CPU frame times of the battle mesh at 1x, 2x
+and 3x, the present, the field's CPU raster, turbo), plus a `dw3-res-probe: targets ...` line at every
+allocation. `mesh dbg:` gains `res=N` and `mem dbg:` gains `mesh_tgt=NNNK`. The fields, the chords and
+the rows to run are in [P6.11_INTERNAL_RES](P6.11_INTERNAL_RES.md#6-oled-test-rows); the
+summary tool is `tools/res_probe_summary.py`.
+
 ## Mesh debug summary (`DW3_NX_DEBUG_MESH`)
 
 Default **on** for `--nxlink` builds. Adds **one sibling line** next to each
