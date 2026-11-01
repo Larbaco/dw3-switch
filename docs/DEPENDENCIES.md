@@ -28,7 +28,7 @@ has run the game on the new code).
 | Dependency | Pin (source) | Latest | Behind | Impact |
 |---|---|---|---|---|
 | `vendor/dw3_decomp` (ReGame-Labs) | `791932b`, 2026-10-15 (submodule + `port/patches/DECOMP_PIN`); **bumped in B2, 2026-11-01** (was `b9caa6c`) | `791932b` | 0 | Done, see section 7 |
-| `vendor/psyz` (our fork Larbaco/psyz) | `192c006`, 2026-10-28 (submodule) | upstream Xeeynamo/psyz `f8780dc`, 2026-10-25 | merge-base `6d01339` (2026-10-11): 32 upstream commits not in the fork, 26 fork commits not upstream | **Affects us, risky.** 7 files / ~18 hunks conflict; overlaps our widescreen gutters, SPU buses, pacing; see 2.2 |
+| `vendor/psyz` (our fork Larbaco/psyz) | `6b0993e`, merge of upstream `f8780dc` (**B2, 2026-11-01**; was `192c006`, then `5328a18`); see section 7.2 | upstream Xeeynamo/psyz `f8780dc`, 2026-10-25 | merge-base `6d01339` (2026-10-11): 32 upstream commits not in the fork, 26 fork commits not upstream | **Affects us, risky.** 7 files / ~18 hunks conflict; overlaps our widescreen gutters, SPU buses, pacing; see 2.2 |
 | psyz `external/SDL` | `fa2c02b` = `release-3.4.16`, 2026-09-02 | `release-3.4.18`, 2026-10-02 | 73 commits, 1 release | Neutral (bugfixes, nothing we use). Safe |
 | psyz `nugget` | `020793e`, 2026-09-27 | `eb6cac5` (main) | 599 commits | We build only `nugget/bsdec` (movies). bsdec changed (`463ad72`, 2026-10-14, new lookup tables). **Risky for movies**, no benefit besides speed |
 | psyz `external/cimgui` | `d3f0c2f`, 2026-04-06 | `2a6a93f` | 48 commits | Debug UI only. Not reviewed; skip |
@@ -245,3 +245,67 @@ commit per dependency either way.
   change.
 * **Evidence:** logs and the drift table in `tmp/evidence/2026-11-01-deps-b2/` of the main
   checkout (not committed). Not covered: nothing ran on the Switch; the new `.nro` was only built.
+
+### 7.2 psyz: merge of Xeeynamo/psyz f8780dc into Larbaco/psyz (PR 2)
+
+* **Fork PR:** Larbaco/psyz#3, branch `deps/merge-upstream-f8780dc`, head `6b0993e`.
+  Merge it with a **merge commit** (no squash) so the pinned SHA stays reachable.
+  This repo's `vendor/psyz` points at that head.
+* **Conflicts (7 files), resolved on the fork's side where the two overlap:**
+  gutters (`Psyz_VideoSetGutter`, `Psyz_VideoCopyGutters`) kept on top of upstream's
+  native-canvas draw path in `sdl3_gpu.c`; SPU: our mixer buses (P6.36) and the
+  #188 voice-end fix kept, upstream #203 **not** taken; `libpress.c` deleted
+  upstream (MDEC wiring and `DecDCTvlc` moved to `mdec.c` / `vlc.c`), upstream's
+  `DecDCTvlc` is `weak` so `port/movies/dct_vlc.c` (bsdec) still wins; the PAL 240-line
+  aspect fix is moot (upstream dropped `set_disp_vert`).
+* **Widescreen #219 versus our P6.1 gutters:** ours stay. The game draws its own
+  wide picture and PSY-Z only holds the side columns. Upstream's resolution
+  override and canvas are in the merge but idle: `layout.native` is
+  `request.w != 0`, and the port never calls `Psyz_VideoSetResolution`.
+* **SPU audit (#203):** it is one accuracy rewrite (ADPCM shift/filter rounding,
+  signed volume registers, envelope clock phase and key-off wait, voice end at
+  sample 20, a measured gauss table). None of it fixes a defect this port has
+  seen, each part changes the sound a little and needs an OLED listen, so none
+  is ported. Candidates, if a defect turns up: `spu_volume()` (sign bit of
+  volume registers), ADPCM shift 13 to 15 and filters 5 to 7, the envelope
+  phase. Our bus tests (`test_libspu_bus`, `test_libsnd_loop`, `test_libspu`)
+  keep passing: psyz unit tests 567 passed, 0 failed.
+* **Port changes the merge needed:** `StoreImage` is asynchronous (upstream
+  #213), so the four direct `Draw_StoreImage` calls (title logo and menu-label
+  capture, title background capture, map view VRAM grab) became
+  `StoreImage` + `DrawSync(0)` (without it the title logo capture read an empty
+  buffer and the original PS1 logo stayed); `horizontal_resolution_368` is
+  `_384` upstream (Switch GPU backend, field profiler).
+* **Builds:** PC US, EU, combined, and the Switch combined `.nro`.
+* **Replay (full tier on both regions + cross-region + `--bin-both --both-subset`,
+  `--jobs 1`):** no process, log, marker or crash failure beyond what `main`
+  already fails. The pixel drift against the decomp-only PR (same scenarios,
+  same refs): 81 of 548 scenarios have at least one capture that differs (17 + 35 + 29 below).
+  Explained by the upstream shader/raster commits, not by the port:
+  * 17 scenarios, whole-frame differences of at most 8 levels per channel
+    (door iris 4:3, menu instant exit, ...): untextured polygons are now
+    truncated to 15 bit (`psx.frag`), as on the PS1.
+  * 35 scenarios, differences of 3.8 thousand up to 68 thousand px of the 76800 px
+    PS1 frame, large amplitude in places: textured polygon sampling (#204 corner sampling,
+    #209 offsets; `resolveTexel` no longer steps back by the screen derivative):
+    battle backgrounds and models (`*-battle-*`, `*-two-battles`, `*-restart-in-battle*`,
+    `*-help-battle`), the news monitors (`*-field-walk`, `*-newgame-field`,
+    `*-repro-balloon`), door iris and spiral transitions. The pictures look the
+    same; a different texel is picked at polygon edges.
+  * 29 title-family scenarios (`*-title*`, `*-lang-*`, `*-load-menu`,
+    `*-title-quit*`): the PS1 frame is identical (0 px), the window picture
+    differs in the innermost gutter column (three window columns beside the
+    picture, dark noisy backdrop), same cause.
+  References are not refreshed. If these differences are accepted, one refresh
+  from this build replaces them.
+* **Audio:** the turbo-music scenarios (`us|eu-turbo-music-field|battle|menu|hold|nohold|hold-stopped`),
+  `*-music-loop`, `*-battle-music-loop`, `*-victory-music`: process, log and
+  marker checks pass (only the battle pictures of `hold-stopped` drift). The
+  music-tick windows are 15 ticks per 60 game frames as before (1233 window lines in both
+  runs). Over the whole tier no `WARNING SsUtKeyOn found no free voice`, no
+  `voices ran out`, no `output silent`, and every minute line has 0 failed key-ons. There is no tech-spam replay scenario; the
+  #188 coverage here is the voice-end fix staying unchanged in `psyz_spu.c` plus
+  those logs. OLED: item D16 of `docs/OLED_TEST_PLAN.md`.
+* **Not covered:** nothing ran on the Switch (a Ryubing or OLED run of the new `.nro`
+  is open); the Switch software raster and `nx_gpu.c` follow the same PSY-Z core, so
+  the polygon sampling change applies there too and has only been compiled.
