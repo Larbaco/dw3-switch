@@ -14,20 +14,24 @@ pad 450 0x0040
 pad 455 0x0000
 pad 470 0x0040
 pad 475 0x0000
-pad 490 0x0080
+pad 490 0x0040
 pad 495 0x0000
-shot 550 scaler-changed
-pad 570 0x0040
-pad 575 0x0000
-pad 590 0x4000
-pad 595 0x0000
+pad 510 0x0040
+pad 515 0x0000
+pad 530 0x0080
+pad 535 0x0000
+shot 590 scaler-changed
 pad 610 0x0040
 pad 615 0x0000
 pad 630 0x4000
 pad 635 0x0000
-shot 690 display-off
-pad 710 0x1000
-pad 715 0x0000
-pad 730 0x1000
-pad 735 0x0000
-end 790
+pad 650 0x0040
+pad 655 0x0000
+pad 670 0x4000
+pad 675 0x0000
+shot 730 display-off
+pad 750 0x1000
+pad 755 0x0000
+pad 770 0x1000
+pad 775 0x0000
+end 830

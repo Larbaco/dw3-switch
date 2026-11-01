@@ -214,7 +214,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.8 | Extra locales | open (the same mechanism as P6.7; a real `LANGUAGE` id only if a language needs its own art, [LOCALIZATION](LOCALIZATION.md#3-pack-design) section 3.1) | [LOCALIZATION](LOCALIZATION.md) |
 | P6.9 | Restart-game hotkey | in progress (hotkey works on the OLED; PC replays pass for battle, save and Continue on US and EU; OLED retest open) | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
-| P6.11 | Internal resolution scaling | future (step 1 feasibility and design done 2026-10-31; build queued after D1-D5) | [P6.11](P6.11_INTERNAL_RES.md), [PC README](../platforms/pc/README.md) |
+| P6.11 | Internal resolution scaling | built 2026-11-01 (phases 1 to 3; PC and Switch, 2x clamp until the OLED run); OLED R0.x and R1-R8 open | [P6.11](P6.11_INTERNAL_RES.md), [PC README](../platforms/pc/README.md) |
 | P6.12 | Button mapping, phase 2 of the controls bundle (built 2026-10-29, PC replays pass; OLED open, plan A15 L9 to L16) | built, OLED open | [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md#phase-2-as-built-2026-10-29), [goal note](#phase-6-goal-notes) |
 | P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
 | P6.13 | Mapping submenu, merged into P6.12 (owner, 2026-10-24) | merged | [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md) |
@@ -1103,7 +1103,7 @@ gate, which stays open.
   line, greyed with no pack), the glyph proof (all 26 accented letters and `¡ ¿ °` render in the game's own font),
   the engine's fixed buffers (MEMCRD:39 and the names, [LOCALIZATION](LOCALIZATION.md#26a-strings-the-engine-copies-into-fixed-buffers)),
   PC replays `eu-l10n-*` on a synthetic pack, the Switch combined image builds; OLED rows TL1 to TL8
-  ([OLED_TEST_PLAN](OLED_TEST_PLAN.md) session R). Next: phase 3, the port screens in PT-BR.
+  ([OLED_TEST_PLAN](OLED_TEST_PLAN.md) session S). Next: phase 3, the port screens in PT-BR.
 - [ ] **P6.8 Extra locales.** Same pack mechanism for other languages;
   selection via existing EU `LANGUAGE` / `CNTY_SEL` slots or a
   `port/cdfs` id remap without rebuilding the `.nro` for each locale.
@@ -1190,6 +1190,14 @@ gate, which stays open.
   **Phase 0 (2026-11-01):** an OLED measurement NRO (`DW3_NX_RES_PROBE`, `dw3-res-probe:` log
   line, `tools/res_probe_summary.py`) and the field investigation (doc section 10). Open: the OLED
   rows R0.1 to R0.4 (owner), then the clamp table.
+  **Build, phases 1 to 3 (2026-11-01):** the Display rows Internal resolution (1x/2x/3x, `internal_res`) and Native res while
+  turbo (default ON), `port/options/internal_res.c`, the PC path through the row (the `DW3_PC_INTERNAL_RES` experiment is the row;
+  PSY-Z `Psyz_VideoReserveInternalResolution` keeps the scaled target for the turbo switch), the Switch mesh scale with 1x and Nx
+  targets pre-allocated and a per-mode clamp table (`nx_res_clamp.h`, 2x until the OLED run), `dw3-res: turbo on -> 1x` /
+  `turbo off -> Nx`, unshown mesh frames skipped in turbo, a finer dither grid at Nx, replays pinned at 1x plus a 12-scenario 2x
+  family. See [doc section 11](P6.11_INTERNAL_RES.md#11-as-built-phases-1-to-3-2026-11-01) for what differs from the design (VRAM-sized
+  Nx targets, not the display-sized pair; the turbo row is not greyed). **Still open:** OLED R0.1-R0.6 (owner) to fill the clamp
+  table, OLED R1-R8 ([session S](OLED_TEST_PLAN.md)), phase 4 polish (partner view, denser dither), the display-sized targets.
 
 - **P6.12–P6.35** (except P6.15, P6.17, P6.18, P6.20 and P6.22, which have their own entries) are goal notes, kept with their ids in
   [Backlog / future goals](#backlog--future-goals).

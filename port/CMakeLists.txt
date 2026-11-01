@@ -355,6 +355,7 @@ add_library(dw3_port_options${_S} OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/options/button_map.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/confirm.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/field_options.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/options/internal_res.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/lang_select.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/map_buttons.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/options/options_cfg.c"

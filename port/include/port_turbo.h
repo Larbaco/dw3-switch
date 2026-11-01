@@ -38,6 +38,12 @@ int dw3_port_turbo_rate_x2(void);
  * 1.5x it alternates 2 and 1 game frames per present. */
 int dw3_port_turbo_present_due(void);
 
+/* P6.11 phase 3: 1 when the frame now starting will be one fast-forward does not
+ * show, as dw3_port_turbo_present_due() will answer at its end (the same credit
+ * arithmetic, without consuming it). Fixed by dw3_port_turbo_poll(), so it is
+ * valid for the whole frame. 0 when fast-forward is off. */
+int dw3_port_turbo_frame_will_skip(void);
+
 #ifdef DW3_PORT_TURBO_TEST
 void dw3_port_turbo_test_set(int r3_held, int mode_file);
 #endif

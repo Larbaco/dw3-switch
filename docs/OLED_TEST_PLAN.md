@@ -129,6 +129,7 @@ remove no save, cfg or store data. Keep the backup from Before you start anyway.
 | P. Defaults generation and Map scaler (D2, D5) | US + EU ordinary | D2 migration, Nintendo and glyphs defaults, Reset to default; D5 Map scaler row and FSR 1 default |
 | Q. One global options file (D3) | US + EU ordinary (Q5: combined) | D3 migration of the old `us/` and `eu/` cfgs (Q1 is ⚠ destructive), one file for both regions, fresh install, Region row, stage sweep region, Help text |
 | R. Text language (P6.7 phases 1 and 2) | EU ordinary or the combined NRO (EU data) | TL1 to TL8 (LOCALIZATION L1 to L8): the Display > Text language row, the synthetic text pack, the glyph proof, the windows with the pack's text |
+| S. Internal resolution (P6.11) | US + EU ordinary (R0.x: the probe NRO, never published) | R0.1 to R0.6 measure the GPU and fill the clamp table; R1 to R8: the rows, 2x and 3x in battle, handheld and docked, fast-forward, a held battle, the dither |
 | G. Everything else | mixed | P5.4 forced crash, P10.2, P4.3, **P5.5 stage sweep (G10)**, **[LAUNCHER]**, **[COMBINED]** (G9), **BUG-1 exit from Sphaira (G13)** |
 
 **[GATE]** (New Game to the first boss, US and EU) is normal play, not a
@@ -639,6 +640,28 @@ environment on the Switch).
 | TL7 | A shop, the inn, the Digimon Lab, the gym, the card game | The menus fit | photo of each | same |
 | TL8 | Build the `partial` pack, set Português (BR); then switch the row back to **Original** (title) and play on | A third of the lines are English; Original gives English at the next loads; saves are unaffected | `dw3.log` | `dw3-l10n: fallback key=` lines and `fallback total=`; `dw3-l10n: restored 50 file(s) to the original text`, `dw3-l10n: off reason=option_original` |
 
+## Session S: Internal resolution (P6.11), rows R0.x and R1 to R8
+
+Source: [P6.11_INTERNAL_RES](P6.11_INTERNAL_RES.md) (design, the owner answers of 2026-11-01, "6.1 The phase 0
+measurement NRO" and the R0.x rows there), [PORT_OPTIONS](PORT_OPTIONS.md#internal-resolution-p611). One ordinary
+US and one EU NRO of a preview that carries P6.11 phases 1 to 3, nxlink for the logs. **R0.1 to R0.6 (the measurement NRO,
+`DW3_NX_RES_PROBE`) come first and are the owner's**: they decide the clamp table (2x in both modes until then;
+`python3 tools/res_probe_summary.py <logs>` prints the two `#define` lines for `nx_res_clamp.h`). Nothing here is
+destructive: the rows only change how the battle 3D is drawn. FR / DE / IT / ES labels are machine drafts. Every row names
+the `dw3.log` lines that prove it.
+
+| # | Action | Expect | If it fails, send | Ticks |
+|---|---|---|---|---|
+| R1 | Options > Display: the list has eight rows (Text language last), **Internal resolution** and **Native res while turbo** are the 2nd and 3rd. Step Internal resolution to 2x, then 3x; step Native res while turbo OFF and ON; quit and start again | The value shows in the row and persists; the message line under the row reads "Smoother 3D in battle. Higher uses more battery." (and "Turbo draws at 1x, then returns to your setting."); with 3x asked and 2x allowed the log says so | `dw3.log`, `port_options.cfg` | `dw3-port-options: internal resolution 2x`, `dw3-res: set 2x (handheld)`, `dw3-res: clamp 3x -> 2x (handheld max)` (while the table says 2x), `dw3-port-options: native res while turbo disabled`, and after the restart `dw3-options: file keys ... internal_res=1 internal_res_turbo=0` |
+| R2 | Battle at 2x, then 3x (when the table allows it), handheld, then docked: fight 2 minutes at each, menus idle, then attacks | Edges of the models and the floor are smoother, less shimmer; no tearing, no flicker; the HUD, the text and the partner view are as before (the partner view stays coarse); the game keeps 60 fps | `dw3.log`, photo | `dw3-res: targets 2x 2048x1024 x2 allocated in N ms (handheld) bytes=...` (once, when the row changes; no `ok=0` or `failed`), `dw3-res: mesh targets now 2x (handheld)` at the first battle frame, `pace dbg:` `game_fps` 60.0 |
+| R3 | Widescreen ON, battle at 2x: look at the two side strips | The stage in the gutters is as sharp as the middle; no seam at the display's edge | photo | `dw3-widescreen: gutter 53 px per side` |
+| R4 | Fast-forward (R3 button) in a battle at 2x: on, off, on, off while fighting, then keep it on for a whole battle and win it | At fast-forward the picture is the 1x one (blockier), back at 2x when it is off; no stutter or black frame at the switch; the speed at 4x is the 1x one | `dw3.log` | `dw3-res: turbo on -> 1x`, `dw3-res: turbo off -> 2x`, `dw3-res: mesh skip on (frames fast-forward does not show)` and `mesh skip off (N frames skipped)`, `mesh dbg:` `frames_mesh` about one in four at 4x, `frame dt us` flat across the switch, no `dw3-res: targets` line at the switch (nothing is allocated there) |
+| R4b | In a battle at 2x with fast-forward ON, open Options (the battle is held), look at the picture behind it, close it | The held picture is a complete battle frame (stage and models), not a half-drawn one; the battle goes on at once, no black frame | `dw3.log`, photo | `dw3-port-options: ... held` lines; no `dw3-res: targets` at the close |
+| R5 | In a battle at the highest value the table allows, undock, wait 10 s, dock again, wait 10 s | The battle keeps drawing; the picture changes size with the mode, no crash report | `dw3.log`, `crash_report.txt` | `nx_gpu: mode -> 1920x1080 (docked)`, then `dw3-res: set Nx (docked)` and `dw3-res: targets ...` again for the new context, `dw3-res: clamp` if the other mode's limit is lower |
+| R6 | A battle held under Options at 2x: change Internal resolution there (2x to 3x or 1x), close | The held picture stays until you close; then the next frame draws at the new value, no black frame | `dw3.log` | `dw3-res: set 3x (handheld)` at the change, `dw3-res: targets` and `dw3-res: mesh targets now 3x` only after the close |
+| R7 | Battery and heat: 10 minutes of battle at 3x (or 2x if 3x is clamped) handheld against 1x (your feel) | Not much worse at 2x; say what 3x costs | battery percent at start and end | none |
+| R8 | Dither by eye at 2x and 3x: look at the sky and the shaded floor | The gradient dithers finer than at 1x (the owner's choice, 2026-11-01); say if you see a pattern at 3x (the 4x4 matrix does not divide 3). A/B with the PS1 grid needs a probe NRO built with `DW3_RES_DITHER=ps1` | photo of each | none |
+
 ## What to send back
 
 Send the whole `sdmc:/switch/dw3/*.log` set (the last 5 runs are kept, so no
@@ -653,7 +676,7 @@ it from Pending OLED checks.
 
 | Item | Lines in `dw3*.log` |
 |---|---|
-| TL1 to TL8 (Session R) | `dw3-l10n: off reason=no_pack\|hash_mismatch\|short_file\|bad_pack\|region_mismatch\|option_original`, `dw3-l10n: pack ok region=eu files=50 strings=N translated=N fallback=N src=sha256:...`, `option text_language=ptbr region=eu`, `override id=N stem=S bytes=N lba=0x1000000 sectors=N`, `fallback key=...`, `fallback total=N of N`, `glyph proof n=29`, `restored N file(s)`, `heap high water text=N` |
+| TL1 to TL8 (Session S) | `dw3-l10n: off reason=no_pack\|hash_mismatch\|short_file\|bad_pack\|region_mismatch\|option_original`, `dw3-l10n: pack ok region=eu files=50 strings=N translated=N fallback=N src=sha256:...`, `option text_language=ptbr region=eu`, `override id=N stem=S bytes=N lba=0x1000000 sectors=N`, `fallback key=...`, `fallback total=N of N`, `glyph proof n=29`, `restored N file(s)`, `heap high water text=N` |
 | A1 | `dw3-run: started <date>`, `dw3: version=`, `crash report ids:` (build id), `runtime version=<region>` |
 | Log rotation | Owner check: after two launches `sdmc:/switch/dw3/` has `dw3.log` and `dw3.1.log` with different `dw3-run: started` times. Line `dw3-log: rotated (...)` in the new `dw3.log` shows each step (`r` renamed, `c` copied, `-` nothing/failed) with its rc and `kept N previous run(s)`; if dw3.log could not be moved aside the new run is appended, never truncated. **PASSED**: owner OLED, 2026-10-28, preview.45: keeps `dw3.log` to `dw3.4.log`, rc=0x0 |
 | A7, A8 | `dw3_game_main returned 0; shutting down (quit path: title Quit game or HOME / applet exit)` |
@@ -693,6 +716,7 @@ it from Pending OLED checks.
 | D14 | `dw3-audio: underruns N in last 60 s (total T), queue depth min/avg/max ...`, `dw3-audio: exit: underruns ...` |
 | D15 | `dw3-battle-cursor: open list=items/tech/switch mode=<gpu-tex, soft or pc> widescreen=W turbo=T`, `dw3-battle-cursor: close list=... count=N sel=S bar=submitted` (`bar=dropped` = no marker on that list) |
 | D16 | `dw3-audio: music tick`, `dw3-audio: underruns N in last 60 s (total T) ... voices in use ... key-on K ok F failed`, `dw3-audio: WARNING SsUtKeyOn found no free voice` (the #188 leak), `dw3-audio: WARNING output silent`, `dw3-battle: technique picked id=` |
+| R1 to R6 | `dw3-port-options: internal resolution Nx`, `dw3-res: set Nx (handheld\|docked\|pc)`, `dw3-res: clamp Nx -> Mx (<mode> max)`, `dw3-res: turbo on -> 1x`, `dw3-res: turbo off -> Nx`, `dw3-res: targets Nx WxH x2 allocated in N ms (<mode>) bytes=...` (or `targets Nx failed, 1x`), `dw3-res: mesh targets now Nx`, `dw3-res: mesh skip on ...` / `mesh skip off (N frames skipped)`, `mesh dbg: ... res=N`, `mem dbg: ... mesh_tgt=NK`, `dw3-options: file keys ... internal_res=N internal_res_turbo=N` |
 | E1 | `dw3-port-restart: fading to black before the reset`, `screen is black after N frames; resetting now`, `new screen ready after N black frames; fading in`, `fade finished, N frames from the request`; `dw3-title-overlay: screen fade to black on`; `dw3-widescreen: gutter 0 px per side (was 53; 4:3 picture) mode file 0x..` must come **between** `screen is black` and `fading in` |
 | E2 | `dw3-autosave: wrote autosave.bin ... in N ms (SD write M ms ...); option Auto-save=N` |
 | G8 | `dw3-options: file keys items_equip_from_items=N items_partner_switch=N map_screen=N` at boot (`map_screen` is 0 when the key is absent since P6.32 phase 1), `dw3-items-menu: partner switch` |

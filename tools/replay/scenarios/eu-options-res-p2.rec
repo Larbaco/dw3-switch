@@ -1,0 +1,31 @@
+# EU: P6.11 Internal resolution rows, phase 2
+pad 110 0x0008
+pad 115 0x0000
+pad 160 0x0008
+pad 165 0x0000
+pad 190 0x0008
+pad 195 0x0000
+pad 220 0x0008
+pad 225 0x0000
+pad 280 0x0008
+pad 285 0x0000
+pad 390 0x0040
+pad 395 0x0000
+pad 410 0x4000
+pad 415 0x0000
+pad 460 0x4000
+pad 465 0x0000
+pad 500 0x0040
+pad 505 0x0000
+shot 560 res-restored
+pad 580 0x4000
+pad 585 0x0000
+shot 640 res-3x
+pad 660 0x4000
+pad 665 0x0000
+shot 720 res-1x
+pad 780 0x1000
+pad 785 0x0000
+pad 800 0x1000
+pad 805 0x0000
+end 860

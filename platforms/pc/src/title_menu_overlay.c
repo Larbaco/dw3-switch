@@ -273,23 +273,29 @@ static void profile_overlay_draw_complete(void) {
     g_profile_pending = 0;
 }
 
-/* The 3x mode renders a 960x720 image. Start that opt-in mode in a 16:9
- * window so the image and native-resolution UI remain 1:1 with 160px bars. */
+/* P6.11: the Internal resolution row is where the old DW3_PC_INTERNAL_RES=3
+ * experiment went. The 3x mode renders a 960x720 image. Start it in a 16:9
+ * window so the image and native-resolution UI remain 1:1 with 160px bars,
+ * unless the window is already that big (a window the user made larger stays). */
+int dw3_pc_internal_res_target(void); /* pc_internal_res.c */
+
+void dw3_pc_title_overlay_recheck_presentation(void) {
+    g_presentation_size_checked = 0;
+}
+
 static void set_three_x_presentation_size(void) {
-    const char *internal_res;
     float density;
     int width, height;
 
     if (g_presentation_size_checked || !g_window ||
         (SDL_GetWindowFlags(g_window) & SDL_WINDOW_HIDDEN)) return;
-    internal_res = getenv("DW3_PC_INTERNAL_RES");
-    if (!internal_res || strcmp(internal_res, "3") != 0) {
+    if (dw3_pc_internal_res_target() != 3) {
         g_presentation_size_checked = 1;
         return;
     }
     g_presentation_size_checked = 1;
     SDL_GetWindowSizeInPixels(g_window, &width, &height);
-    if (width == 1280 && height == 720) return;
+    if (width >= 1280 && height >= 720) return;
     density = SDL_GetWindowPixelDensity(g_window);
     if (density <= 0.0f) density = 1.0f;
     SDL_SetWindowSize(g_window,

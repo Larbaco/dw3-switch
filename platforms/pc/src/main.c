@@ -681,8 +681,6 @@ static void dw3_pc_relaunch_atexit(void) {
 #endif
 
 int main(int argc, char **argv) {
-    const char *internal_res = getenv("DW3_PC_INTERNAL_RES");
-
 #if defined(DW3_BOTH) && DW3_BOTH
     g_main_argc = argc;
     g_main_argv = argv;
@@ -691,20 +689,9 @@ int main(int argc, char **argv) {
     if (init_paths(argc, argv) != 0) {
         return 1;
     }
-    if (internal_res != NULL && internal_res[0] != '\0') {
-        char *end = NULL;
-        unsigned long multiplier = strtoul(internal_res, &end, 10);
-        if (end == internal_res || *end != '\0' || multiplier != 3 ||
-            Psyz_VideoSetInternalResolution((unsigned)multiplier) != 0) {
-            fprintf(stderr,
-                    "dw3-pc: DW3_PC_INTERNAL_RES must be 3 (experimental 720p)\n");
-            return 1;
-        }
-        fprintf(stderr,
-                "dw3-pc: experimental internal resolution %lux "
-                "(960x720 for 320x240 content)\n",
-                multiplier);
-    }
+    /* P6.11: the internal resolution is the Options row (and DW3_INTERNAL_RES for a
+     * run); port/options/internal_res.c hands it to pc_internal_res.c once the
+     * options file is read. */
     dw3_pad_host_shot_cb = dw3_pc_replay_shot;
     g_prev_vsync_cb = Psyz_SetVSyncCb(dw3_pc_vsync_pump);
     if (getenv("DW3_PC_FRAME_LIMIT") != NULL) {

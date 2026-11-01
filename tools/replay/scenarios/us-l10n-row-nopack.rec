@@ -19,12 +19,16 @@ pad 490 0x0040
 pad 495 0x0000
 pad 510 0x0040
 pad 515 0x0000
-shot 570 row-greyed
-pad 590 0x0020
-pad 595 0x0000
-shot 650 row-refused
-pad 670 0x1000
-pad 675 0x0000
-pad 690 0x1000
-pad 695 0x0000
-end 750
+pad 530 0x0040
+pad 535 0x0000
+pad 550 0x0040
+pad 555 0x0000
+shot 610 row-greyed
+pad 630 0x0020
+pad 635 0x0000
+shot 690 row-refused
+pad 710 0x1000
+pad 715 0x0000
+pad 730 0x1000
+pad 735 0x0000
+end 790

@@ -2,6 +2,7 @@
  * Shaders adapted from vendor/psyz sdl3_gl.c (ES 3.00). UI stays on CPU VRAM. */
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
+#include "nx_res.h"
 #include "nx_res_probe.h"
 #include "nx_vram_pack.h"
 #ifdef DW3_NX_GAME_IMAGE
@@ -71,14 +72,39 @@ static int s_gutter_px;
 static int s_gutter_x0;
 static int s_gutter_w;
 static GLuint s_sample_tex;
-/* P6.11 phase 0 (test aid, docs/P6.11_INTERNAL_RES.md): the mesh and gutter
- * targets are s_scale times the VRAM size. The vertices, the draw offset and
- * the OT order do not change: the vertex shader writes NDC across the whole
- * target, so only the viewport, the scissors, the clears and the gutter blit
- * are multiplied. 1 (the default) is the shipped path. */
+/* P6.11 (docs/P6.11_INTERNAL_RES.md): the battle mesh draws into targets that are
+ * `scale` times the VRAM size. The vertices, the draw offset and the OT order do
+ * not change: the vertex shader writes NDC across the whole target, so only the
+ * viewport, the scissors, the clears and the gutter blit are multiplied.
+ *
+ * Two sets of targets exist. s_sets[0] is the 1x pair of every build, made at
+ * init. s_sets[1] is the Nx pair, made when the Options row asks for 2x or 3x
+ * (dw3_nx_mesh_apply_res, a frame boundary) and kept while it can be used, so
+ * the switch to 1x for fast-forward and back only changes which set is active:
+ * no allocation, no shader compile. s_mesh_tex / s_mesh_fbo / s_gutter_tex /
+ * s_gutter_fbo above are the ACTIVE set; the rest of this file uses them as
+ * before. */
 enum { MESH_SCALE_MAX = 3 };
-static int s_scale = 1;
-static int s_scale_want = 1;
+typedef struct MeshTargets {
+    GLuint mesh_tex;
+    GLuint mesh_fbo;
+    GLuint gutter_tex;
+    GLuint gutter_fbo;
+    int scale; /* 0 = not allocated */
+} MeshTargets;
+static MeshTargets s_sets[2];
+static int s_set_active;
+static int s_scale = 1;        /* scale of the active set */
+static int s_want_active = 1;  /* what the port asked for */
+static int s_want_reserve = 1;
+static int s_probe_scale;      /* the measurement chord's choice (0 = none) */
+static int s_failed_scale;     /* an Nx set that did not fit; not retried until the request changes */
+/* Phase 3: the frame now playing will not be shown, so it draws no mesh. */
+static bool s_skip_armed;
+static bool s_force_draw;      /* the first frame on a new set always draws */
+static unsigned s_skip_frames; /* armed frames since the probe last asked */
+static unsigned s_skip_run;    /* armed frames in this turbo run */
+static unsigned s_skip_gap;    /* frames since the last armed one */
 static int s_filter_linear;
 static int s_dither_ps1;
 static GLuint s_prog;
@@ -320,6 +346,22 @@ static GLuint link_program(const char *vs_src, const char *fs_src) {
     return prog;
 }
 
+static void delete_set(MeshTargets *t) {
+    if (t->mesh_fbo) {
+        glDeleteFramebuffers(1, &t->mesh_fbo);
+    }
+    if (t->mesh_tex) {
+        glDeleteTextures(1, &t->mesh_tex);
+    }
+    if (t->gutter_fbo) {
+        glDeleteFramebuffers(1, &t->gutter_fbo);
+    }
+    if (t->gutter_tex) {
+        glDeleteTextures(1, &t->gutter_tex);
+    }
+    memset(t, 0, sizeof(*t));
+}
+
 static void destroy_gl(void) {
     dw3_nx_res_probe_gl_shutdown();
     if (s_prog) {
@@ -342,22 +384,19 @@ static void destroy_gl(void) {
         glDeleteBuffers(1, &s_blit_vbo);
         s_blit_vbo = 0;
     }
-    if (s_mesh_fbo) {
-        glDeleteFramebuffers(1, &s_mesh_fbo);
-        s_mesh_fbo = 0;
+    if (!s_sets[0].scale) {
+        /* init failed before the 1x set was recorded: the globals own it */
+        s_sets[0].mesh_fbo = s_mesh_fbo;
+        s_sets[0].mesh_tex = s_mesh_tex;
+        s_sets[0].gutter_fbo = s_gutter_fbo;
+        s_sets[0].gutter_tex = s_gutter_tex;
     }
-    if (s_mesh_tex) {
-        glDeleteTextures(1, &s_mesh_tex);
-        s_mesh_tex = 0;
-    }
-    if (s_gutter_fbo) {
-        glDeleteFramebuffers(1, &s_gutter_fbo);
-        s_gutter_fbo = 0;
-    }
-    if (s_gutter_tex) {
-        glDeleteTextures(1, &s_gutter_tex);
-        s_gutter_tex = 0;
-    }
+    delete_set(&s_sets[0]);
+    delete_set(&s_sets[1]);
+    s_mesh_fbo = s_mesh_tex = s_gutter_fbo = s_gutter_tex = 0;
+    s_set_active = 0;
+    s_scale = 1;
+    s_failed_scale = 0;
     if (s_sample_tex) {
         glDeleteTextures(1, &s_sample_tex);
         s_sample_tex = 0;
@@ -648,13 +687,27 @@ static void flush_locked(const uint16_t *cpu_vram) {
         /* Again into the gutter FBO, shifted so the display starts at
          * s_gutter_px and clipped to the display plus both gutters. */
         glBindFramebuffer(GL_FRAMEBUFFER, s_gutter_fbo);
-        glScissor(0, s_area_y0 * s_scale,
-                  (s_gutter_w + 2 * s_gutter_px) * s_scale,
-                  (s_area_y1 - s_area_y0 + 1) * s_scale);
         glUniform2f(s_u_draw_offset,
                     (float)(s_off_x + s_gutter_px - s_area_x0),
                     (float)s_off_y);
-        draw_batches();
+        if (s_scale == 1) {
+            glScissor(0, s_area_y0 * s_scale,
+                      (s_gutter_w + 2 * s_gutter_px) * s_scale,
+                      (s_area_y1 - s_area_y0 + 1) * s_scale);
+            draw_batches();
+        } else {
+            /* P6.11: at Nx only the two side strips are drawn here; the middle
+             * of this target is overwritten by the mesh target's display part
+             * at the present (dw3_nx_mesh_present), so drawing it again would
+             * double the fill for nothing. */
+            glScissor(0, s_area_y0 * s_scale, s_gutter_px * s_scale,
+                      (s_area_y1 - s_area_y0 + 1) * s_scale);
+            draw_batches();
+            glScissor((s_gutter_px + s_gutter_w) * s_scale, s_area_y0 * s_scale,
+                      s_gutter_px * s_scale,
+                      (s_area_y1 - s_area_y0 + 1) * s_scale);
+            draw_batches();
+        }
     }
 
     dw3_nx_res_probe_mesh_end(tris);
@@ -686,8 +739,9 @@ static int clamp_scale(int n) {
     return n < 1 ? 1 : (n > MESH_SCALE_MAX ? MESH_SCALE_MAX : n);
 }
 
-/* The test aids, read once (DW3_NX_TEST_ENV bakes them into a measurement
- * NRO). Unset = scale 1, nearest, the fine dither: the shipped behaviour. */
+/* The test aids that change the picture, read once (DW3_NX_TEST_ENV bakes them
+ * into a measurement NRO). Unset = nearest, the fine dither: the shipped look.
+ * The scale itself is the Options row now (DW3_INTERNAL_RES for a run). */
 static void read_test_env(void) {
     static int done;
     const char *v;
@@ -696,111 +750,204 @@ static void read_test_env(void) {
         return;
     }
     done = 1;
-    v = getenv("DW3_NX_MESH_SCALE");
-    if (v && v[0]) {
-        s_scale_want = clamp_scale(atoi(v));
-        s_scale = s_scale_want;
-    }
     v = getenv("DW3_NX_MESH_FILTER");
     s_filter_linear = v && (v[0] == 'l' || v[0] == 'L');
     v = getenv("DW3_RES_DITHER");
     s_dither_ps1 = v && (v[0] == 'p' || v[0] == 'P');
-    if (s_scale != 1 || s_filter_linear || s_dither_ps1) {
-        fprintf(stderr, "nx_mesh: TEST AID scale=%d filter=%s dither=%s\n",
-                s_scale, s_filter_linear ? "linear" : "nearest",
+    if (s_filter_linear || s_dither_ps1) {
+        fprintf(stderr, "nx_mesh: TEST AID filter=%s dither=%s\n",
+                s_filter_linear ? "linear" : "nearest",
                 s_dither_ps1 ? "ps1" : "fine");
     }
 }
 
-/* Gives the two targets their size for s_scale. The caller has bound nothing
- * it needs kept. Returns false on a GL error (out of memory). */
-static bool alloc_targets(void) {
-    GLenum filt = s_filter_linear ? GL_LINEAR : GL_NEAREST;
-    int w = DW3_NX_VRAM_W * s_scale;
-    int h = DW3_NX_VRAM_H * s_scale;
-    GLuint tex[2] = {s_mesh_tex, s_gutter_tex};
+/* Makes a pair of targets (and the gutter pair when `with_gutter`) of `scale`
+ * times the VRAM size, cleared. Leaves the framebuffer binding as it found it.
+ * Returns false on a GL error (out of memory); nothing is left allocated then. */
+static bool alloc_set(MeshTargets *t, int scale, bool with_gutter) {
+    const GLenum filt = s_filter_linear ? GL_LINEAR : GL_NEAREST;
+    const int w = DW3_NX_VRAM_W * scale;
+    const int h = DW3_NX_VRAM_H * scale;
+    GLint prev_fbo = 0;
+    bool ok = true;
     int i;
 
+    memset(t, 0, sizeof(*t));
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
     while (glGetError() != GL_NO_ERROR) {
     }
-    for (i = 0; i < 2; i++) {
-        if (!tex[i]) {
-            continue;
-        }
-        glBindTexture(GL_TEXTURE_2D, tex[i]);
+    for (i = 0; i < (with_gutter ? 2 : 1) && ok; i++) {
+        GLuint *tex = i ? &t->gutter_tex : &t->mesh_tex;
+        GLuint *fbo = i ? &t->gutter_fbo : &t->mesh_fbo;
+
+        glGenTextures(1, tex);
+        glBindTexture(GL_TEXTURE_2D, *tex);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA,
                      GL_UNSIGNED_BYTE, NULL);
-    }
-    return glGetError() == GL_NO_ERROR;
-}
-
-static uint64_t target_bytes(void) {
-    return (uint64_t)DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4u * (uint64_t)s_scale *
-           (uint64_t)s_scale * ((s_mesh_tex ? 1u : 0u) + (s_gutter_tex ? 1u : 0u));
-}
-
-static void clear_both_targets(void) {
-    GLint prev_fbo = 0;
-    int i;
-    GLuint fbo[2] = {s_mesh_fbo, s_gutter_fbo};
-
-    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
-    glDisable(GL_SCISSOR_TEST);
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    for (i = 0; i < 2; i++) {
-        if (fbo[i]) {
-            glBindFramebuffer(GL_FRAMEBUFFER, fbo[i]);
+        glGenFramebuffers(1, fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, *fbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                               GL_TEXTURE_2D, *tex, 0);
+        ok = glGetError() == GL_NO_ERROR &&
+             glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+        if (ok) {
+            glDisable(GL_SCISSOR_TEST);
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             glClear(GL_COLOR_BUFFER_BIT);
         }
     }
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
+    if (!ok) {
+        delete_set(t);
+        return false;
+    }
+    t->scale = scale;
+    return true;
 }
 
-/* Applies s_scale_want at a frame boundary (or at init). On failure it goes
- * back to 1x, which always fits, and says so. */
-static void apply_scale(void) {
-    uint64_t t0 = probe_now_us();
-    int ok;
-    int want = s_scale_want;
+static uint64_t set_bytes(const MeshTargets *t) {
+    return (uint64_t)DW3_NX_VRAM_W * DW3_NX_VRAM_H * 4u * (uint64_t)t->scale *
+           (uint64_t)t->scale * ((t->mesh_tex ? 1u : 0u) + (t->gutter_tex ? 1u : 0u));
+}
 
-    s_scale = want;
-    ok = alloc_targets();
-    if (ok) {
-        GLint prev_fbo = 0;
+static uint64_t target_bytes(void) {
+    return (s_sets[0].scale ? set_bytes(&s_sets[0]) : 0) +
+           (s_sets[1].scale ? set_bytes(&s_sets[1]) : 0);
+}
 
-        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
-        glBindFramebuffer(GL_FRAMEBUFFER, s_mesh_fbo);
-        ok = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
-        glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fbo);
-    }
-    if (!ok && want != 1) {
-        fprintf(stderr, "nx_mesh: %dx targets failed, back to 1x\n", want);
-        s_scale = s_scale_want = 1;
-        ok = alloc_targets();
-    }
-    clear_both_targets();
-    glFinish(); /* the allocation time below is real, not queued */
+/* The active set becomes s_sets[idx]. Only a frame boundary may call it (the
+ * port does, before the frame's first draw), and never while a battle is held
+ * under Options: the held picture lives in the old set. The new set holds an old
+ * frame, so the first frame on it always draws, and nothing is composited
+ * from it before then. */
+static void switch_to(int idx) {
+    const MeshTargets *t = &s_sets[idx];
+
+    s_set_active = idx;
+    s_scale = t->scale;
+    s_mesh_tex = t->mesh_tex;
+    s_mesh_fbo = t->mesh_fbo;
+    s_gutter_tex = t->gutter_tex;
+    s_gutter_fbo = t->gutter_fbo;
     s_n_vtx = 0;
     s_n_idx = 0;
-    dw3_nx_res_probe_note_targets(
-        s_scale, DW3_NX_VRAM_W * s_scale, DW3_NX_VRAM_H * s_scale,
-        s_gutter_tex != 0, target_bytes(), (uint32_t)(probe_now_us() - t0),
-        ok && s_scale == want);
+    s_had_content = false;
+    s_content_before_hold = false;
+    s_force_draw = true;
+}
+
+static const char *mode_name(void) {
+    return dw3_nx_res_mode_name();
+}
+
+/* Brings the targets in line with what the port and the measurement chord ask
+ * for. Called at a frame boundary (the port's apply, and every frame start). */
+static void service_res(void) {
+    int want_a;
+    int want_nx;
+    int idx;
+
+    if (!s_ready || dw3_port_battle_options_holding()) {
+        return; /* a held battle keeps its set; retried every frame */
+    }
+    want_a = s_probe_scale ? s_probe_scale : s_want_active;
+    want_nx = s_probe_scale > 1
+                  ? s_probe_scale
+                  : (s_want_active > s_want_reserve ? s_want_active : s_want_reserve);
+    want_nx = want_nx > 1 ? clamp_scale(want_nx) : 0;
+    if (want_nx != s_failed_scale) {
+        s_failed_scale = 0;
+    }
+    if (want_nx != 0 && want_nx == s_failed_scale) {
+        want_nx = 0; /* it did not fit; stay at 1x until the request changes */
+    }
+    if (want_nx != s_sets[1].scale) {
+        uint64_t t0 = probe_now_us();
+        bool ok = true;
+
+        if (s_set_active == 1) {
+            switch_to(0);
+        }
+        delete_set(&s_sets[1]);
+        if (want_nx) {
+            ok = alloc_set(&s_sets[1], want_nx, s_sets[0].gutter_tex != 0);
+            glFinish(); /* the time below is real, not queued */
+            if (ok) {
+                const uint32_t us = (uint32_t)(probe_now_us() - t0);
+
+                dw3_nx_res_log("dw3-res: targets %dx %dx%d x%d allocated in %u.%u ms (%s)"
+                               " bytes=%llu",
+                               want_nx, DW3_NX_VRAM_W * want_nx,
+                               DW3_NX_VRAM_H * want_nx,
+                               s_sets[1].gutter_tex ? 2 : 1, us / 1000u,
+                               (us % 1000u) / 100u, mode_name(),
+                               (unsigned long long)target_bytes());
+            } else {
+                s_failed_scale = want_nx;
+                want_nx = 0;
+                dw3_nx_res_log("dw3-res: targets %dx failed, 1x (%s)",
+                               s_failed_scale, mode_name());
+            }
+            dw3_nx_res_probe_note_targets(
+                want_nx ? want_nx : 1, DW3_NX_VRAM_W * (want_nx ? want_nx : 1),
+                DW3_NX_VRAM_H * (want_nx ? want_nx : 1),
+                (want_nx ? s_sets[1].gutter_tex : s_sets[0].gutter_tex) != 0,
+                target_bytes(), (uint32_t)(probe_now_us() - t0), ok);
+        }
+    }
+    idx = (want_a > 1 && s_sets[1].scale == want_a) ? 1 : 0;
+    if (idx != s_set_active) {
+        switch_to(idx);
+        dw3_nx_res_log("dw3-res: mesh targets now %dx (%s)", s_scale, mode_name());
+    }
 }
 
 int dw3_nx_mesh_scale(void) { return s_scale; }
 
 uint64_t dw3_nx_mesh_target_bytes(void) { return s_ready ? target_bytes() : 0; }
 
-void dw3_nx_mesh_set_scale(int n) { s_scale_want = clamp_scale(n); }
+void dw3_nx_mesh_apply_res(int active, int reserve) {
+    s_want_active = clamp_scale(active);
+    s_want_reserve = clamp_scale(reserve);
+    service_res();
+}
 
+/* The measurement chord (Minus + ZL + R, probe builds): cycle the scale, 1x, 2x,
+ * 3x. It overrides the Options row until the NRO restarts. */
 int dw3_nx_mesh_cycle_scale(void) {
-    s_scale_want = s_scale_want >= MESH_SCALE_MAX ? 1 : s_scale_want + 1;
+    s_probe_scale = s_scale >= MESH_SCALE_MAX ? 1 : s_scale + 1;
     fprintf(stderr, "nx_mesh: scale -> %dx at the next frame boundary\n",
-            s_scale_want);
-    return s_scale_want;
+            s_probe_scale);
+    return s_probe_scale;
+}
+
+void dw3_nx_mesh_frame_begin(int skip) {
+    service_res();
+    s_skip_armed = s_ready && skip != 0 && !s_force_draw;
+    s_force_draw = false;
+    if (s_skip_armed) {
+        s_had_content = s_content_before_hold; /* the targets keep the last shown frame */
+        if (s_skip_run == 0) {
+            dw3_nx_res_log("dw3-res: mesh skip on (frames fast-forward does not show)");
+        }
+        s_skip_run++;
+        s_skip_frames++;
+        s_skip_gap = 0;
+    } else if (s_skip_run != 0 && ++s_skip_gap > 8) {
+        dw3_nx_res_log("dw3-res: mesh skip off (%u frames skipped)", s_skip_run);
+        s_skip_run = 0;
+    }
+}
+
+unsigned dw3_nx_mesh_take_skip_frames(void) {
+    const unsigned n = s_skip_frames;
+
+    s_skip_frames = 0;
+    return n;
 }
 
 bool dw3_nx_mesh_init(void) {
@@ -842,8 +989,7 @@ bool dw3_nx_mesh_init(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    /* Sized (and re-sized) by apply_scale below; 1x here keeps the shipped
-     * allocation order. */
+    /* The 1x set: the shipped allocation. The Nx set is made by service_res. */
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, DW3_NX_VRAM_W, DW3_NX_VRAM_H, 0,
                  GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
@@ -901,11 +1047,19 @@ bool dw3_nx_mesh_init(void) {
     mark_dirty_full();
     s_ready = true;
     dw3_nx_res_probe_gl_init();
-    /* Only a test aid ever leaves 1x, or asks for a log of the allocation:
-     * the shipped path does not touch the targets again. */
-    if (s_scale != 1 || dw3_nx_res_probe_on()) {
-        apply_scale();
+    s_sets[0] = (MeshTargets){s_mesh_tex, s_mesh_fbo, s_gutter_tex, s_gutter_fbo, 1};
+    s_set_active = 0;
+    s_scale = 1;
+    s_skip_armed = false;
+    s_force_draw = false;
+    if (dw3_nx_res_probe_on()) {
+        dw3_nx_res_probe_note_targets(1, DW3_NX_VRAM_W, DW3_NX_VRAM_H,
+                                      s_gutter_tex != 0, target_bytes(), 0, 1);
     }
+    /* The Nx set for a request the port already made (a dock change rebuilds the
+     * context and drops every GL object, so the set is made again; at boot there
+     * is no request yet). */
+    service_res();
     fprintf(stderr, "nx_mesh: GLES3 mesh FBO ready\n");
     return true;
 }
@@ -1059,7 +1213,7 @@ void dw3_nx_mesh_set_twin(uint32_t twin) { (void)twin; }
 
 void dw3_nx_mesh_clear_rect(int x, int y, int w, int h, float r, float g,
                             float b) {
-    if (!s_ready || w <= 0 || h <= 0) {
+    if (!s_ready || s_skip_armed || w <= 0 || h <= 0) {
         return;
     }
     clear_fbo_rect(s_mesh_fbo, x, y, w, h, r, g, b);
@@ -1071,7 +1225,7 @@ void dw3_nx_mesh_clear_rect(int x, int y, int w, int h, float r, float g,
 
 void dw3_nx_mesh_fill_bg(int x, int y, int w, int h, float r, float g,
                          float b) {
-    if (!s_ready) {
+    if (!s_ready || s_skip_armed) {
         return;
     }
     dw3_nx_mesh_clear_rect(x, y, w, h, r, g, b);
@@ -1096,7 +1250,7 @@ void dw3_nx_mesh_set_gutter(int px, int x0, int w, int h) {
 }
 
 void dw3_nx_mesh_clear_gutter_rows(int y0, int y1) {
-    if (s_ready && s_gutter_px > 0) {
+    if (s_ready && !s_skip_armed && s_gutter_px > 0) {
         clear_fbo_rect(s_gutter_fbo, 0, y0, DW3_NX_VRAM_W, y1 - y0, 0.0f, 0.0f,
                        0.0f);
     }
@@ -1111,7 +1265,7 @@ void dw3_nx_mesh_enqueue(const Dw3NxMeshVertex *v, int nverts,
                          const uint16_t *cpu_vram) {
     int i;
 
-    if (!s_ready || !v || !idx || nverts <= 0 || nidx <= 0) {
+    if (!s_ready || s_skip_armed || !v || !idx || nverts <= 0 || nidx <= 0) {
         return;
     }
     if (s_n_vtx + nverts > MESH_MAX_VTX || s_n_idx + nidx > MESH_MAX_IDX) {
@@ -1228,16 +1382,17 @@ void dw3_nx_mesh_end_frame(void) {
         return;
     }
     dw3_nx_res_probe_frame_end();
-    s_content_before_hold = s_had_content;
-    s_had_content = false;
-    soft_views_age();
-    if (s_scale_want != s_scale && s_ready) {
-        /* A test-aid scale change, at the frame boundary. The next frame
-         * redraws the whole battle, so the cleared targets cost nothing. */
-        apply_scale();
+    if (s_skip_armed) {
+        /* An unshown frame drew nothing: the targets still hold the last
+         * shown frame, and s_content_before_hold still says whether it had
+         * mesh content (a battle held under Options shows that picture). */
         s_had_content = false;
-        s_content_before_hold = false;
+    } else {
+        s_content_before_hold = s_had_content;
+        s_had_content = false;
     }
+    s_skip_armed = false;
+    soft_views_age();
 }
 
 void dw3_nx_mesh_drop_pending(void) {

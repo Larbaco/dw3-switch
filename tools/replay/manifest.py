@@ -3086,7 +3086,7 @@ for _v in ("us", "eu"):
                   note="Options > Menus: the six switches (the five Items-menu ones and Instant menu exit) turned OFF are read back by the next process (D1, patch 0200)"),
          Scenario(f"{_v}-options-display", _v, "full", timeout=300,
                   phases=(f"{_v}-options-display-p1", f"{_v}-options-display-p2"),
-                  expect_log=((0, r"dw3-port-options: group open display \(5 row\(s\), title\)(?s:.*)"
+                  expect_log=((0, r"dw3-port-options: group open display \(7 row\(s\), title\)(?s:.*)"
                                   r"dw3-port-options: map scaler lanczos2(?s:.*)"
                                   r"dw3-port-options: map mod pack disabled(?s:.*)"
                                   r"dw3-port-options: version label disabled"),
@@ -3759,11 +3759,10 @@ for _i, _s in enumerate(SCENARIOS):
     if _pins:
         SCENARIOS[_i] = _pin_cfg(_s, *_pins)
 
-# The Display group has five rows since D5 (Map scaler) and six since P6.7 (Text language), and the
-# layout flows start from the file now.
+# The Display group has five rows since D5 (Map scaler), six since P6.7 (Text language), eight since P6.11
+# (Internal resolution, Native res while turbo), and the layout flows start from the file now.
 for _i, _s in enumerate(SCENARIOS):
-    _rep = lambda es: tuple((p, r.replace(r"group open display \(4 row\(s\)", r"group open display \(6 row\(s\)")
-                            .replace(r"group open display \(5 row\(s\)", r"group open display \(6 row\(s\)"))
+    _rep = lambda es: tuple((p, re.sub(r"group open display \\\(\d row\\\(s\\\)", r"group open display \\(8 row\\(s\\)", r))
                             for p, r in es)
     _new = dataclasses.replace(_s, expect_log=_rep(_s.expect_log), expect_log_both=_rep(_s.expect_log_both))
     if _new.name.endswith(("-controls-layout", "-controls-custom")):
@@ -3776,6 +3775,93 @@ for _i, _s in enumerate(SCENARIOS):
         _new = dataclasses.replace(_new, expect_log=_fix(_new.expect_log), expect_log_both=_fix(_new.expect_log_both))
     SCENARIOS[_i] = _new
 
+
+# --- P6.11 internal resolution (docs/P6.11_INTERNAL_RES.md section 5) -----------------------------
+# Every scenario above runs at 1x: the runner takes DW3_INTERNAL_RES, DW3_INTERNAL_RES_TURBO and
+# DW3_RES_DITHER out of the environment and the replays' option file has no internal_res key, so the
+# rows sit at their defaults (1x). The 2x family below is small: the window grab (the .png checkpoint;
+# the .ppm PS1 display capture is the nearest downsample of the scaled picture and hides what is
+# tested) of the title, the field, a battle, the battle held under Options, the map, the movie, the
+# fast-forward switch and the Options rows, on EU, and a US canary of four. PC only (the Switch draws
+# the mesh scale on the GPU, which Ryubing's timing and fps cannot judge; its rows are OLED R1-R8).
+_R2 = (("DW3_INTERNAL_RES", "2"),)
+_R2_FIXED = _R2 + (("DW3_INTERNAL_RES_TURBO", "0"),)   # the recordings that run at turbo 4 stay at 2x
+_SW_CFG = (("fast_forward", "4"),)                       # R3 in the recording turns turbo on and off
+
+
+def _res(base, name, note, **kw):
+    """A copy of scenario `base` under a new name (own references), full tier."""
+    b = by_name()[base]
+    return dataclasses.replace(b, name=name, tier="full", ref_from="", ref_map=(), own_refs=(),
+                               note=note, **kw)
+
+
+for _v in ("us", "eu"):
+    _t = _res(f"{_v}-title" if _v == "us" else "eu-lang-en", f"{_v}-res2x-title",
+              "2x: the title and its native overlays do not depend on the setting (P6.11)")
+    _add(dataclasses.replace(
+        _t, env=_t.env + _R2,
+        expect_log=_t.expect_log + ((0, r"dw3-res: set 2x \(pc\)"),),
+        forbid_log=_t.forbid_log + ((0, r"dw3-res: clamp"), (0, r"PSY-Z refused"))))
+    _b = by_name()[f"{_v}-two-battles"]
+    _add(_res(f"{_v}-two-battles", f"{_v}-res2x-two-battles",
+              "2x: 3D at 2x in two forced battles, widescreen gutters included; fast-forward 4 with "
+              "Native res while turbo OFF keeps 2x (P6.11)",
+              env=_b.env + _R2_FIXED,
+              expect_log=_b.expect_log + ((0, r"dw3-res: set 2x \(pc\)"),),
+              forbid_log=_b.forbid_log + ((0, r"dw3-res: turbo (?:on|off)"), (0, r"dw3-res: clamp"),
+                                          (0, r"PSY-Z refused"))))
+    _add(Scenario(f"{_v}-res2x-turbo", _v, "full", timeout=600, cfg=_SW_CFG,
+                  phases=(f"{_v}-res-switch",),
+                  env=_b.env + _R2,
+                  expect_restore=_b.expect_restore,
+                  expect_log=((0, r"dw3-res: set 2x \(pc\)(?s:.*)dw3-turbo: on(?s:.*)"
+                                  r"dw3-res: turbo on -> 1x(?s:.*)dw3-turbo: off(?s:.*)"
+                                  r"dw3-res: turbo off -> 2x(?s:.*)"
+                                  r"dw3-res: turbo on -> 1x(?s:.*)dw3-res: turbo off -> 2x"),),
+                  forbid_log=((0, r"PSY-Z refused"), (0, r"dw3-res: clamp")),
+                  note="2x: R3 turns fast-forward on and off in both battles: turbo on -> 1x, turbo off -> 2x "
+                       "(one reserved target, no re-allocation); the captures after the switch are the steady "
+                       "2x run's (P6.11 phase 3)"))
+
+_uf = by_name()["eu-underground-exit"]
+_add(_res("eu-underground-exit", "eu-res2x-field",
+          "2x: the field (2D) is the same picture at 2x, gutters and the canal water included (P6.11)",
+          env=_uf.env + _R2, expect_log=_uf.expect_log + ((0, r"dw3-res: set 2x \(pc\)"),)))
+_bo = by_name()["eu-battle-options"]
+_add(_res("eu-battle-options", "eu-res2x-battle-held",
+          "2x: the Options screen over a battle (P9.7): the held picture is the 2x one, Music volume changed "
+          "while held (P6.11)", env=_bo.env + _R2_FIXED,
+          expect_log=_bo.expect_log + ((0, r"dw3-res: set 2x \(pc\)"),)))
+_mv = by_name()["eu-map-view"]
+_add(_res("eu-map-view", "eu-res2x-map",
+          "2x: the full-screen map (output resolution) over a 2x game (P6.11)",
+          env=_mv.env + _R2, expect_log=_mv.expect_log + ((0, r"dw3-res: set 2x \(pc\)"),)))
+_add(Scenario("eu-res2x-movie", "eu", "full", turbo=4, timeout=900, phases=("eu-res-movie",),
+              env=_R2, log_only=False,
+              expect_log=((0, r"dw3-res: set 2x \(pc\)"),),
+              forbid_log=((0, r"PSY-Z refused"),),
+              note="2x: a frame of the opening movie is unscaled (P6.11)"))
+_add(Scenario("eu-res2x-row", "eu", "full", timeout=300,
+              phases=("eu-options-res-p1", "eu-options-res-p2"),
+              expect_log=((0, r"dw3-port-options: internal resolution 2x(?s:.*)"
+                              r"dw3-res: set 2x \(pc\)(?s:.*)"
+                              r"dw3-port-options: native res while turbo disabled"),
+                          (1, r"dw3-options: file keys .* internal_res=1 internal_res_turbo=0(?s:.*)"
+                              r"dw3-res: set 2x \(pc\)(?s:.*)"
+                              r"dw3-port-options: internal resolution 3x(?s:.*)"
+                              r"dw3-res: set 3x \(pc\)(?s:.*)"
+                              r"dw3-port-options: internal resolution 1x")),
+              forbid_log=((0, r"PSY-Z refused"), (1, r"PSY-Z refused")),
+              note="Options > Display: Internal resolution 1x -> 2x and Native res while turbo ON -> OFF are "
+                   "written (internal_res=1, internal_res_turbo=0) and read back by the next process, which "
+                   "steps 2x -> 3x -> 1x live (P6.11 phase 1)"))
+# The experiment this replaces: DW3_PC_INTERNAL_RES=3 widened the title's background and set a 1280x720 window.
+_t3 = by_name()["us-title"]
+_add(_res("us-title", "us-res3x-title",
+          "3x: the title background is widened and the window is 16:9, as the old DW3_PC_INTERNAL_RES=3 did (P6.11)",
+          env=_t3.env + (("DW3_INTERNAL_RES", "3"),),
+          expect_log=_t3.expect_log + ((0, r"dw3-res: set 3x \(pc\)"),)))
 
 # P6.7 phase 1 (docs/LOCALIZATION.md section 3.7): the text pack on the EU disc. Every scenario runs
 # on a private runtime (Scenario.l10n) whose pack is built from the disc's own English text with a
@@ -3830,7 +3916,7 @@ _add(
              forbid_log=_L10N_OFF_BAD + ((0, r"show keys: this pack has no key variants"),),
              note="DW3_L10N_SHOW_KEYS=1: every string starts with its key, \"(MEMCRD:3) \""),
     Scenario("eu-l10n-row", "eu", "full", timeout=300, l10n="upper",
-             expect_log=((0, r"dw3-port-options: group open display \(6 row\(s\), title\)(?s:.*)"
+             expect_log=((0, r"dw3-port-options: group open display \(8 row\(s\), title\)(?s:.*)"
                              r"dw3-port-options: text language ptbr(?s:.*)"
                              r"dw3-l10n: option text_language=ptbr region=eu(?s:.*)"
                              r"dw3-l10n: override id=\d+(?s:.*)"

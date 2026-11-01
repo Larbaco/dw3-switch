@@ -81,6 +81,7 @@ endif()
 
 add_executable(dw3-pc
   src/main.c
+  src/pc_internal_res.c
   src/mem_sampler.c
   src/psyz_host_overrides.c
   src/psyz_dma_present.c

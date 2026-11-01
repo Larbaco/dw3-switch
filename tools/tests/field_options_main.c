@@ -38,7 +38,7 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
     g_state_calls++;
 }
 void dw3_pc_title_overlay_set_options_language(int lang) { g_language = lang; }
-void dw3_pc_title_overlay_set_options_locked(unsigned mask) { (void)mask; }
+void dw3_pc_title_overlay_set_options_locked(uint64_t mask) { (void)mask; }
 
 static int g_fail;
 #define CHECK(cond)                                                        \
@@ -115,8 +115,8 @@ int main(void) {
           !dw3_port_options_row_locked(5) && !dw3_port_options_row_locked(6) &&
           !dw3_port_options_row_locked(7) && !dw3_port_options_row_locked(8));
     CHECK(dw3_port_options_locked_mask() ==
-          (1u | (1u << DW3_PORT_OPT_CUSTOMIZE) | (1u << DW3_PORT_OPT_SAVE_STORE) |
-           (1u << DW3_PORT_OPT_STAGE_SWEEP) | (1u << DW3_PORT_OPT_SWEEP_FRAMES) |
+          (UINT64_C(1) | (UINT64_C(1) << DW3_PORT_OPT_CUSTOMIZE) | (UINT64_C(1) << DW3_PORT_OPT_SAVE_STORE) |
+           (UINT64_C(1) << DW3_PORT_OPT_STAGE_SWEEP) | (UINT64_C(1) << DW3_PORT_OPT_SWEEP_FRAMES) |
            DW3_PORT_OPTIONS_LOCK_CHEATS));
     dw3_port_field_options_open(2); /* already open: ignored */
     CHECK(g_language == DW3_TITLE_LANG_DE);

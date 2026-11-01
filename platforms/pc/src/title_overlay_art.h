@@ -115,17 +115,17 @@ void dw3_pc_title_overlay_set_options_view(int cursor, const int *values,
  * message line says it is changed at the title), DW3_TITLE_LOCK_CHEATS = the
  * Square / Y "Cheats" hint. 0 on the title. A change rebuilds the retained
  * static layer (dw3_pc_title_overlay_options_layout). */
-/* D1: the registry now has 29 rows (bits 0..28), so the Cheats entry's bit moved
- * from 16 to 30; bit 31 stays the overlay's in-game mark (lock_key). */
-enum { DW3_TITLE_LOCK_CHEATS = 1u << 30 };
+/* The mask is 64 bits (P6.11): rows 0..61, the Cheats entry's bit 62, bit 63 the
+ * overlay's in-game mark (lock_key). */
+#define DW3_TITLE_LOCK_CHEATS (UINT64_C(1) << 62)
 /* P10.6 fix-now: the source positions (0..9 of port_button_map.h: 0 B, 1 A,
  * 2 X, 3 Y, 4 L, 5 R, 6 ZL, 7 ZR, 8 L3, 9 R3) of the buttons that produce the
  * PS Cross (confirm) and Triangle (back) under the button map. The Switch hint
  * caps show their letters; a change rebuilds the retained layer. The PC keeps
  * its drawn PS marks. */
 void dw3_pc_title_overlay_set_hint_caps(int confirm_src, int back_src);
-void dw3_pc_title_overlay_set_options_locked(unsigned mask);
-unsigned dw3_pc_title_overlay_options_locked(void);
+void dw3_pc_title_overlay_set_options_locked(uint64_t mask);
+uint64_t dw3_pc_title_overlay_options_locked(void);
 /* Bumped when the page, the cheats switch or the locked rows change: the
  * static layer (labels, title, hints) must be drawn again
  * (title_options_cache.c). */
@@ -134,14 +134,14 @@ unsigned dw3_pc_title_overlay_options_layout(void);
  * canvas (cleared first), without changing the live layout. Lets the cache
  * draw the layout a menu will open with before it is open. */
 void dw3_pc_title_overlay_options_static_band(uint8_t *rgba, int pitch,
-        unsigned locked, int page, int cheats_on, int y, int h);
+        uint64_t locked, int page, int cheats_on, int y, int h);
 /* The same layer in two parts (page SUB_BASE: the part shared by every group,
  * page = a group page: part 1 shared, part 2 the group's own, over a canvas that
  * holds the shared part; clear = 0 keeps the canvas). A group's layer is then a
  * copy of the shared layer plus a header, a few plaques and labels, not a raster
  * of the whole screen. */
 void dw3_pc_title_overlay_options_static_part(uint8_t *rgba, int pitch,
-        unsigned locked, int page, int cheats_on, int part, int y, int h, int clear);
+        uint64_t locked, int page, int cheats_on, int part, int y, int h, int clear);
 /* 1 when `page` is a group's sub-screen (not the group list). */
 int dw3_pc_title_overlay_options_is_group_page(int page);
 /* Live page / cheats switch. */
@@ -198,7 +198,7 @@ void dw3_pc_title_overlay_options_rect(int page, int kind, int slot, int *x,
 void dw3_pc_title_overlay_options_page_info(int page, int cheats_on,
         int *scroll, int *items, int *slots);
 /* The bits of `locked` that change the static layer of `page`. */
-unsigned dw3_pc_title_overlay_options_lock_key(int page, unsigned locked);
+uint64_t dw3_pc_title_overlay_options_lock_key(int page, uint64_t locked);
 /* 1 when the labels of `page` are not in its static layer (drawn per row by
  * DW3_TITLE_OPTIONS_LABEL), and the cheats switch is not part of its layer key. */
 int dw3_pc_title_overlay_options_dynamic_labels(int page);

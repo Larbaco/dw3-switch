@@ -17,12 +17,16 @@ pad 460 0x4000
 pad 465 0x0000
 pad 500 0x0040
 pad 505 0x0000
-shot 540 fm-off
-pad 560 0x4000
-pad 565 0x0000
-shot 600 fm-on
-pad 620 0x1000
-pad 625 0x0000
-pad 640 0x1000
-pad 645 0x0000
-end 700
+pad 520 0x0040
+pad 525 0x0000
+pad 540 0x0040
+pad 545 0x0000
+shot 580 fm-off
+pad 600 0x4000
+pad 605 0x0000
+shot 640 fm-on
+pad 660 0x1000
+pad 665 0x0000
+pad 680 0x1000
+pad 685 0x0000
+end 740

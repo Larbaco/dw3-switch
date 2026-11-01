@@ -42,7 +42,7 @@ static _Thread_local int options_layer_row;
  * or (P9.7) the locked rows change, so the retained canvas rebuilds it. */
 static unsigned options_layout;
 /* P9.7: rows greyed in game (bit i = row i, bit 16 = the Cheats entry). */
-static unsigned options_locked;
+static uint64_t options_locked;
 /* Which page the Options screen shows (the group list, a group's sub-screen,
  * P6.20 the Cheats pages) and whether the cheats master switch is on. */
 static int options_page = DW3_TITLE_OPTIONS_PAGE_OPTIONS;
@@ -53,7 +53,7 @@ static int options_cheats_on;
  * draws (locked rows, page, cheats switch) overrides the live one for that
  * thread only, so the main thread's view is never touched. */
 static _Thread_local int ovr_on;
-static _Thread_local unsigned ovr_locked;
+static _Thread_local uint64_t ovr_locked;
 static _Thread_local int ovr_page,ovr_cheats;
 /* Which part of a sub-screen's static layer is drawn: 0 all, 1 the part shared by
  * every group (backdrop, message strip, hints), 2 the part of the open group
@@ -198,12 +198,13 @@ int dw3_pc_title_overlay_options_cursor(void) { return option_cursor; }
 int dw3_pc_title_overlay_options_value(int row) {
     return row>=0&&row<DW3_TITLE_OPTION_ROWS?option_values[row]:0;
 }
-enum { OPT_LOCK_ROWS = 30 }; /* registry rows 0..29: the lock mask's width (D1, patch 0200, D5, P6.7); bit 30 is the Cheats entry */
-void dw3_pc_title_overlay_set_options_locked(unsigned mask) {
-    mask&=((1u<<OPT_LOCK_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
+enum { OPT_LOCK_ROWS = 62 }; /* registry rows 0..61: the lock mask's width; bit 62 is DW3_TITLE_LOCK_CHEATS, bit 63 the in-game mark */
+#define ROW_LOCKED(locked,reg) ((reg)<OPT_LOCK_ROWS&&(((locked)>>(reg))&UINT64_C(1)))
+void dw3_pc_title_overlay_set_options_locked(uint64_t mask) {
+    mask&=((UINT64_C(1)<<OPT_LOCK_ROWS)-1u)|DW3_TITLE_LOCK_CHEATS;
     if(mask!=options_locked){options_locked=mask;options_layout++;options_generation++;}
 }
-unsigned dw3_pc_title_overlay_options_locked(void) { return options_locked; }
+uint64_t dw3_pc_title_overlay_options_locked(void) { return options_locked; }
 unsigned dw3_pc_title_overlay_options_layout(void) { return options_layout; }
 int dw3_pc_title_overlay_options_desc_follows_value(int page) {
     int group,scroll;
@@ -330,7 +331,7 @@ enum { OPT_X0 = 84, OPT_Y0 = 60, OPT_W = 792, OPT_H = 600,
 enum { ROW_SWITCH, ROW_FAST_FORWARD, ROW_VOLUME, ROW_ENCOUNTER, ROW_TEXT,
        ROW_BATTLE, ROW_AUTOSAVE, ROW_LAYOUT, ROW_REGION, ROW_CUSTOMIZE, ROW_RESET,
        ROW_TURBO_MUSIC, ROW_GLYPHS, ROW_MAP_SCREEN,
-       ROW_EXTRA /* D1: registry rows 16..28, words in extra_words */ };
+       ROW_EXTRA /* D1: registry rows 16..30, words in extra_words */ };
 static int row_kind(int row) {
     return row == 1 ? ROW_FAST_FORWARD : row == 3 || row == 4 ? ROW_VOLUME :
            row == 5 ? ROW_ENCOUNTER : row == 6 ? ROW_TEXT :
@@ -338,7 +339,7 @@ static int row_kind(int row) {
            row == 9 ? ROW_LAYOUT : row == 10 ? ROW_REGION :
            row == 11 ? ROW_CUSTOMIZE : row == 12 ? ROW_RESET :
            row == 13 ? ROW_TURBO_MUSIC : row == 14 ? ROW_GLYPHS :
-           row == 15 ? ROW_MAP_SCREEN : row >= 16 && row <= 29 ? ROW_EXTRA : ROW_SWITCH;
+           row == 15 ? ROW_MAP_SCREEN : row >= 16 && row <= 31 ? ROW_EXTRA : ROW_SWITCH;
 }
 /* P6.31: the Auto-save row's lettering, in the language of the disc (en, fr,
  * de, es, it: the DW3_TITLE_LANG_* order). OFF is the Options screen's word. */
@@ -421,14 +422,14 @@ static const MapscrWords *mapscr_lang(void) {
  * three message lines, the Select / Minus values). */
 #define XW(k,l) {WORD(opt_row_x_##k##_##l),WORD(opt_desc_x_##k##_##l)}
 #define EXTRA_WORDS(l) {{XW(eq,l),XW(st,l),XW(bg,l),XW(us,l),XW(ps,l),XW(vr,l),XW(mm,l),XW(ss,l), \
-    XW(sw,l),XW(sf,l),XW(mb,l),XW(mx,l),XW(sc,l),XW(tl,l)}, WORD(opt_val_sw_run_##l),WORD(opt_val_sw_over_##l), \
+    XW(sw,l),XW(sf,l),XW(mb,l),XW(mx,l),XW(sc,l),XW(tl,l),XW(ir,l),XW(rt,l)}, WORD(opt_val_sw_run_##l),WORD(opt_val_sw_over_##l), \
     {WORD(opt_row_mb0_##l),WORD(opt_row_mb1_##l),WORD(opt_row_mb2_##l),WORD(opt_row_mb3_##l), \
      WORD(opt_row_mb4_##l),WORD(opt_row_mb5_##l),WORD(opt_row_mb6_##l),WORD(opt_row_mb7_##l)}, \
     {WORD(opt_desc_mb_bind_##l),WORD(opt_desc_mb_field_##l),WORD(opt_desc_mb_reset_##l)}, \
     WORD(opt_desc_tl_nopack_##l),WORD(opt_val_tl_orig_##l)}
 typedef struct ExtraWords { Word row,desc; } ExtraWords;
 typedef struct ExtraSet {
-    ExtraWords reg[14];       /* registry rows 16..29 (27 = Instant menu exit, 28 = D5 Map scaler, 29 = P6.7 Text language) */
+    ExtraWords reg[16];       /* registry rows 16..31 (27 = Instant menu exit, 28 = D5 Map scaler, 29 = P6.7 Text language, 30 = P6.11 Internal resolution, 31 = Native res while turbo) */
     Word sweep_run,sweep_over;
     Word mb_row[8];
     Word mb_desc[3];          /* bind, field, reset */
@@ -753,13 +754,13 @@ static const GroupWords *group_lang(int group) {
 }
 /* The registry rows of every locked bit of a group: a group whose rows are all
  * locked in game (Display: Widescreen) greys its plaque. */
-static unsigned group_row_mask(int group) {
-    unsigned m=0;
+static uint64_t group_row_mask(int group) {
+    uint64_t m=0;
     if(group==DW3_OPTGRP_CHEATS||group==DW3_OPTGRP_CUSTOM||group==DW3_OPTGRP_MAPBTN)return 0; /* not registry rows */
-    for(int k=0;k<dw3_optgroups[group].nrows;k++)m|=1u<<dw3_optgroups[group].rows[k];
+    for(int k=0;k<dw3_optgroups[group].nrows;k++)if(dw3_optgroups[group].rows[k]<OPT_LOCK_ROWS)m|=UINT64_C(1)<<dw3_optgroups[group].rows[k];
     return m;
 }
-static int group_locked(int group,unsigned locked) {
+static int group_locked(int group,uint64_t locked) {
     if(group==DW3_OPTGRP_CHEATS)return (locked&DW3_TITLE_LOCK_CHEATS)!=0;
     return dw3_optgroups[group].nrows>0&&group_row_mask(group)!=0&&
            (locked&group_row_mask(group))==group_row_mask(group);
@@ -830,6 +831,11 @@ static const Word *list_value(const ListWords *t,int reg,int v,int *dim) {
             *dim=v==2?2:0;
             return &extra_lang()->tl_orig;
         }
+        if(reg==30) {       /* P6.11 Internal resolution: 1x, 2x, 3x */
+            static const Word v_ires[]={WORD(opt_1x),WORD(opt_2x),WORD(opt_3x)};
+            if(v>2)v=2;
+            return &v_ires[v];
+        }
         if(v>1)v=1;
         *dim=v==0;
         return &v_onoff[v];
@@ -869,7 +875,7 @@ static void options_list_screen(int group,int scroll) {
     const int mbt=group==DW3_OPTGRP_MAPBTN; /* D1 Map buttons: the seven bindings and Reset */
     int ids[DW3_OPTGRP_COUNT];
     const int n=on_groups?dw3_optgroups_visible(DW3_OPTGRP_CHEATS_LISTED,ids):dw3_optgroups[group].nrows;
-    const unsigned locked=ELOCKED;
+    const uint64_t locked=ELOCKED;
     const int cursor=options_layer==OPTIONS_LAYER_STATIC?-1:option_cursor;
     const int shared=static_part!=2,specific=static_part!=1;
 
@@ -913,7 +919,7 @@ static void options_list_screen(int group,int scroll) {
         if(a>=n)break;
         if(!clip_hits(L_ROW_X,slot_y(s),L_ROW_W,L_ROW_PITCH))continue;
         reg=on_groups?-1:dw3_optgroups[group].rows[a];
-        lock=on_groups?group_locked(ids[a],locked):cht||cus||mbt?0:(int)((locked>>reg)&1u);
+        lock=on_groups?group_locked(ids[a],locked):cht||cus||mbt?0:(int)ROW_LOCKED(locked,reg);
         label=on_groups?&group_lang(ids[a])->name
               :cus?&ps_words[reg]
               :mbt?&extra_lang()->mb_row[reg]
@@ -1001,7 +1007,7 @@ static void options_list_screen(int group,int scroll) {
 #endif
             d=cus?(option_values[cursor]>=10?&custom_lang()->promptdesc:&custom_lang()->desc)
               :mbt?&extra_lang()->mb_desc[reg==DW3_MAPBTN_RESET?2:reg==6?1:0]
-              :(locked>>reg)&1u?lock_lang():reg==29&&option_values[cursor]==2?&extra_lang()->tl_nopack
+              :ROW_LOCKED(locked,reg)?lock_lang():reg==29&&option_values[cursor]==2?&extra_lang()->tl_nopack
               :row_kind(reg)==ROW_EXTRA?&extra_lang()->reg[reg-16].desc
               :row_kind(reg)==ROW_CUSTOMIZE?&custom_lang()->rowdesc
               :row_kind(reg)==ROW_RESET?&custom_lang()->resetdesc
@@ -1221,7 +1227,7 @@ void dw3_pc_title_overlay_options_component(uint8_t *rgba,int pitch,
  * that layout; safe to call from the worker thread while the main thread
  * draws (only thread-local state is written). */
 void dw3_pc_title_overlay_options_static_part(uint8_t *rgba,int pitch,
-        unsigned locked,int page,int cheats_on,int part,int y,int h,int clear) {
+        uint64_t locked,int page,int cheats_on,int part,int y,int h,int clear) {
     if(!rgba||pitch<960*4||y<0||h<=0||y+h>720)return;
     if(page==DW3_TITLE_OPTIONS_PAGE_SUB_BASE){page=dw3_optlist_page(DW3_OPTGRP_DISPLAY,0);part=1;}
     ovr_on=1;ovr_locked=locked;ovr_page=page;ovr_cheats=cheats_on;
@@ -1239,7 +1245,7 @@ void dw3_pc_title_overlay_options_static_part(uint8_t *rgba,int pitch,
     ovr_on=0;
 }
 void dw3_pc_title_overlay_options_static_band(uint8_t *rgba,int pitch,
-        unsigned locked,int page,int cheats_on,int y,int h) {
+        uint64_t locked,int page,int cheats_on,int y,int h) {
     dw3_pc_title_overlay_options_static_part(rgba,pitch,locked,page,cheats_on,0,y,h,1);
 }
 int dw3_pc_title_overlay_options_cheats_on(void) {
@@ -1272,10 +1278,10 @@ void dw3_pc_title_overlay_options_rect(int page,int kind,int slot,int *x,int *y,
 }
 /* The part of the locked mask that changes the static layer of `page`, so a
  * layout that cannot differ (Sound in game and at the title) shares one layer. */
-unsigned dw3_pc_title_overlay_options_lock_key(int page,unsigned locked) {
+uint64_t dw3_pc_title_overlay_options_lock_key(int page,uint64_t locked) {
     int group,sc;
-    /* In game (a locked mask) the backdrop is dimmed deeper: bit 31 keeps those layers apart. */
-    const unsigned in_game=locked?1u<<31:0;
+    /* In game (a locked mask) the backdrop is dimmed deeper: bit 63 keeps those layers apart. */
+    const uint64_t in_game=locked?UINT64_C(1)<<63:0;
     if(page==DW3_TITLE_OPTIONS_PAGE_SUB_BASE)return in_game;
     if(!dw3_optlist_decode(page,&group,&sc))return 0;
     if(group<0)return in_game|(locked&(DW3_TITLE_LOCK_CHEATS|group_row_mask(DW3_OPTGRP_DISPLAY)|

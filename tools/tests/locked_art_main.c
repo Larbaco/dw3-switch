@@ -187,10 +187,15 @@ int main(int argc, char **argv) {
     check_cache(other, "lock gone (full rebuild)");
     dw3_options_cache_release();
 
-    /* Out-of-range lock bits are ignored. */
-    dw3_pc_title_overlay_set_options_locked(0xFFFFFFFFu);
+    /* Out-of-range lock bits are ignored: the mask is 64 bits, rows 0..61, the Cheats bit 62,
+     * bit 63 only the layer key's in-game mark (P6.11: a row past 29 can be locked now). */
+    dw3_pc_title_overlay_set_options_locked(~UINT64_C(0));
     CHECK(dw3_pc_title_overlay_options_locked() ==
-          (((1u << 30) - 1u) | DW3_TITLE_LOCK_CHEATS));
+          (((UINT64_C(1) << 62) - 1u) | DW3_TITLE_LOCK_CHEATS));
+    dw3_pc_title_overlay_set_options_locked(UINT64_C(1) << 31);
+    CHECK(dw3_pc_title_overlay_options_locked() == (UINT64_C(1) << 31)); /* a row past 29 is held */
+    dw3_pc_title_overlay_set_options_locked(UINT64_C(1) << 40);
+    CHECK(dw3_pc_title_overlay_options_locked() == (UINT64_C(1) << 40)); /* and one past 32 */
     dw3_pc_title_overlay_set_options_locked(0);
 
     free(open_ref);
