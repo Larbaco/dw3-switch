@@ -3921,7 +3921,7 @@ _add(
              forbid_log=_L10N_OFF_BAD + ((0, r"show keys: this pack has no key variants"),),
              note="DW3_L10N_SHOW_KEYS=1: every string starts with its key, \"(MEMCRD:3) \""),
     Scenario("eu-l10n-row", "eu", "full", timeout=300, l10n="upper",
-             expect_log=((0, r"dw3-port-options: group open display \(8 row\(s\), title\)(?s:.*)"
+             expect_log=((0, r"dw3-port-options: group open display \(9 row\(s\), title\)(?s:.*)"
                              r"dw3-port-options: text language ptbr(?s:.*)"
                              r"dw3-l10n: option text_language=ptbr region=eu(?s:.*)"
                              r"dw3-l10n: override id=\d+(?s:.*)"
@@ -3967,7 +3967,7 @@ _PT_FORBID = ((0, r"dw3-l10n: (override|pack ok)"), (0, r"refused"), (0, r"dw3-p
 for _v, _reg in (("us", "US"), ("eu", "EU")):
     _add(
         Scenario(f"{_v}-ptbr-options", _v, "full", timeout=300, l10n="none", cfg=_L10N_CFG,
-                 expect_log=(_PT_LOG, (0, r"dw3-port-options: group open display \(8 row\(s\), title\)(?s:.*)"
+                 expect_log=(_PT_LOG, (0, r"dw3-port-options: group open display \(9 row\(s\), title\)(?s:.*)"
                                           r"dw3-port-options: group open gameplay(?s:.*)"
                                           r"dw3-port-options: group open controls(?s:.*)"
                                           r"dw3-port-options: group open saves")),
