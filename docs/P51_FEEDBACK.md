@@ -593,7 +593,7 @@ Orchestrator default 3: one shared pack, per-region files only where the pieces 
 
 Orchestrator default 6, **static version**: "yes, dimmed; static (no scroll) if the scroll costs frame time".
 The scroll does: the retained STATIC layer would be recomposed (about 160 ms) every frame. What
-was built is described in [PORT_OPTIONS](PORT_OPTIONS.md#menu-background-p51-item-6): the game's tile
+was built is described in [PORT_OPTIONS](PORT_OPTIONS.md#menu-background-p51-item-6-d4--a18): the game's tile
 (sprite 0x1D) decoded once from the disc files (4 to 6 ms, logged), baked into the retained layer, dimmed
 under the plaques; no per-frame cost, so there was nothing to measure beyond that one-time decode
 (`dw3-options: menu background tile ... ready in N us`). The size answers the doc's "about 96 px,

@@ -419,6 +419,17 @@ int dw3_port_options_in_game(void) {
     return g_in_game != 0;
 }
 
+/* D4 / A18: the menu background's scroll. One game pixel every second tick,
+ * period 96, counted from the open (like STSTATUS_drawBackground's bgScroll, which
+ * starts at 0 when its menu opens). Counted in dw3_port_options_tick, ahead of the
+ * Yes / No windows and the Help screens, so the background keeps moving under
+ * them as the game's does. */
+static unsigned g_bg_ticks;
+
+int dw3_port_options_bg_phase(void) {
+    return (int)((g_bg_ticks / 2u) % 96u);
+}
+
 int dw3_port_options_group(void) {
     return g_level ? g_group : -1;
 }
@@ -476,6 +487,7 @@ static void po_open(int in_game) {
     g_gcursor = g_gscroll = g_cursor = g_scroll = 0;
     g_assign_btn = -1;
     g_open_frames = 0;
+    g_bg_ticks = 0;
     g_logged_open = 0;
 #if DW3_OPT_REGION_ROW
     dw3_port_region_relaunch_reset();
@@ -2124,6 +2136,7 @@ void dw3_port_options_tick(void) {
     if (!g_open) {
         return;
     }
+    g_bg_ticks++;
     /* P6.38: the restart window ("Restart in EU now?") has the pad while it is
      * up; it is ticked here because the title and the field menu both leave
      * it to this screen. D1: so are the Shared saves and Stage sweep windows. */
@@ -2144,6 +2157,7 @@ void dw3_port_options_tick(void) {
     if (!g_open) {
         return;
     }
+    g_bg_ticks++;
     if (dw3_port_confirm_owned_is_open()) {
         dw3_port_confirm_tick_owned();
         po_push_view();

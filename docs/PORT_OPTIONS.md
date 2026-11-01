@@ -1123,17 +1123,57 @@ scrolled; `cheats-give`, the end of the list) now compare pictures.
 
 See [OLED_TEST_PLAN](OLED_TEST_PLAN.md) A5, A9 to A12 and their proof lines.
 
-## Menu background (P51 item 6)
+## Menu background (P51 item 6, D4 / A18)
 
-The title's Options, Cheats and Help screens draw the game's own field-menu background
-(sprite 0x1D of the status sprites: a 96 x 96 period of blue panels) under the plaques,
-dimmed (alpha 90 of 255), instead of the dimmed title picture. In game the near-opaque dim
-stays (the field menu behind must not read through). **Static, not scrolling:** the
-game scrolls it one pixel every other frame, but the Options layers are retained (the
-cache of #298 / #327 composes them once), and a scroll would recompose the layer, about 160 ms,
-every frame. A scrolling version needs a textured quad with a UV offset drawn under the canvas
-in both hosts (SDL3 GPU and the Switch GLES overlay); that is the follow-up, and the OLED
-row A18 asks whether the owner wants it.
+The title's Options, Cheats and Help screens (and the walkthrough pages) draw the game's own
+field-menu background (sprite 0x1D of the status sprites: a 96 x 96 period of blue panels) under
+the plaques, dimmed (alpha 90 of 255), instead of the dimmed title picture. **It scrolls, as in
+the Items menu** (owner decision A18 "A", 2026-10-31, built as D4): `STSTATUS_drawBackground`
+(`vendor/dw3_decomp/src/menus/field_menu/menu.c`) draws sprite 0x1D at `(bgScroll, bgScroll)`
+and moves `bgScroll` one pixel every other frame, back to 0 at 0x60, so the tile moves **down
+and right**, 1 game pixel (3 canvas pixels) per 2 frames, period 96 game pixels (192 frames).
+The same code runs the Lab, Gym, shop, memory card, partner-name and battle-report
+backgrounds. In game the near-opaque dim (alpha 252) stays, so there is no tile and no quad:
+the field menu behind must not read through.
+
+**How it is drawn.** The retained 960x720 canvas (the dirty-row cache of #298 / #327) is
+**not** recomposed for a scroll. At the title the canvas keeps a **transparent backdrop**
+(alpha 0, RGB = the tile's dimmed average colour, so a linear sample across a plaque edge does
+not darken) and each host draws a **tiled textured quad under it**:
+
+| Host | Texture | Scroll |
+|---|---|---|
+| PC (SDL3 GPU, `title_menu_overlay.c`) | 288 x 288 RGBA, the dimmed tile expanded 3x (the canvas's scale), sampler `REPEAT` + linear | 96 precomputed quads in the vertex buffer, one per phase (the overlay shader has no UV-offset uniform): a scroll step is a different first vertex, no upload. The quad spans canvas x -480 to 1440 and y 0 to 720 and a scissor limits it to the picture: the 16:9 width with gutters, else the window when the title's side art fills it, else the 4:3 middle |
+| Switch (GLES, `nx_title_overlay.c`) | the same 288 x 288 texture, `GL_REPEAT`, made with the options texture (and ahead of the open once the title is up and the prewarm has read the tile) | `draw_quad` with UVs computed per draw from the phase; drawn at the options fade's alpha, under the canvas |
+
+The tile is no longer baked into the canvas, so the **16:9 side strips are the same tiled,
+scrolling background** (they were flat navy, A18's p56 note). If the tile cannot be read from
+the disc the canvas keeps the dimmed title backdrop and no quad is drawn
+(`dw3-options: menu background tile not available (...)`).
+
+**The phase** is `dw3_port_options_bg_phase()` (`port/options/port_options.c`): the ticks of
+`dw3_port_options_tick` since the screen opened, divided by 2, modulo 96. It is counted ahead of
+the Yes / No windows and the Help screens, so the background keeps moving under them as the
+game's does; it restarts at 0 at each open (the game's `bgScroll` starts at 0 when its menu
+opens) and keeps its last value after a close (the Switch fades the screen out over 13 frames).
+It follows the game's own frame count, so a replay sees the same phase at the same frame: two runs
+of `eu-options-cheats-listed`, `eu-cheats-screen` and `eu-help-title` are byte-identical
+(`--twice`), no pinned offset is needed. In a `DW3_VERSION=both` image the host reads it through
+the game table (`port_options_bg_phase`, `DW3_GAME_API_ABI` 6).
+
+**No hitch.** The tile is read once, before the first layer is composed (the first prewarm,
+4 to 6 ms on the frame thread, as before), and the texture is uploaded in the same
+frame-thread pass while the screen is closed; an open has nothing to build. The scroll
+adds no `options update` line and no compose: the quad is one draw, the canvas is untouched.
+Measured on the PC (eu-options-cheats-listed, 3 runs each, same machine, load from other workers):
+first frame shown 2.0 to 2.6 ms after the open request, against 2.1 to 2.9 ms on `main` at
+`aed7647`; the `options update cached` line has the same compose (0.9 to 1.2 ms) and upload
+(1.1 to 1.3 ms). The OLED recheck is A18 ([OLED_TEST_PLAN](OLED_TEST_PLAN.md)).
+
+**Rule 8:** this is the port's own screen (exemption C: "the menu background"), so there is no
+Options row. A switch to turn the scroll off would be cheap (the phase would be pinned at 0),
+but nothing in the original's behaviour is being changed for the player: the Items menu itself
+scrolls the same tile. The PR asks the owner if a row is wanted anyway.
 
 Code: `platforms/pc/src/menu_bg_tile.c` reads `STSTATCS.BIN` and `STSTATTM.BIN`
 (FILE_STATUS_SPRITES 0x3F4 US / 0x404 EU and the file after it) through cdfs, places entry 0
@@ -1141,10 +1181,22 @@ Code: `platforms/pc/src/menu_bg_tile.c` reads `STSTATCS.BIN` and `STSTATTM.BIN`
 that fall in one period with the game's sprite rules, and returns an RGBA tile; no game data
 is written anywhere. `dw3_pc_title_overlay_menu_tile_prepare()` runs it once, on the frame
 thread, before the first layer is composed (`dw3_options_cache_prewarm_begin` / `_update`),
-and logs `dw3-options: menu background tile 96x96 from the status sprites (sprite 0x1D) ready
-in N us` (4 to 6 ms in the PC runs) or `... not available (reason), using the title backdrop`.
-The 16:9 side strips use the canvas's top-left texel, so it holds the tile's average colour
-(dimmed): flat navy beside the tiled middle. Same art code on the Switch (the overlay is shared).
+dims it and expands it 3x (`dw3_pc_title_overlay_menu_bg_texture()` hands the texture to the
+hosts) and logs `dw3-options: menu background tile 96x96 from the status sprites (sprite 0x1D)
+ready in N us (scrolls: 1 px every 2 ticks, period 96)` (4 to 8 ms) or `... not available
+(reason), using the title backdrop`. Same art code on the Switch (the overlay is shared).
+
+Logs (once per event): PC `dw3-options: menu background quad ready (288x288 texture, repeat, 96
+scroll phases, GPU) in N us` (at boot, before any open) and, per open of the screen,
+`dw3-options: menu background scrolling (phase P, 1 px every 2 ticks, period 96; first draw,
+retained canvas untouched)`; Switch `dw3-title-overlay: 288x288 RGBA menu background texture
+(GLES, repeat), create N us` and `dw3-title-overlay: menu background scrolling (phase P, ...)`;
+both `dw3-port-options: first frame shown N ms after the open request`. Tests:
+`tools/tests/options_cache_main.c` (built a third time with a synthetic tile,
+`tools/tests/menu_bg_tile_stub.c`: every dirty-row update is still byte-identical to the full
+render with the transparent backdrop, the texture is the dimmed 3x tile, the title canvas is
+clear and not black, the in-game layout keeps its dim), `tools/tests/port_options_main.c` (the
+phase: 1 per 2 ticks, wraps at 96, restarts at an open, kept after a close).
 
 ## Region at start row (P51 item 4)
 
