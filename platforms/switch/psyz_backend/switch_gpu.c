@@ -695,8 +695,8 @@ void Draw_SetDisplayMode(DisplayMode *mode) {
     if (!mode) {
         return;
     }
-    if (mode->horizontal_resolution_368) {
-        s_disp_mode_w = 368;
+    if (mode->horizontal_resolution_384) {
+        s_disp_mode_w = 384;
     } else {
         switch (mode->horizontal_resolution) {
         case 0:
