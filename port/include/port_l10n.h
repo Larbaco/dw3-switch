@@ -49,7 +49,7 @@ void dw3_l10n_boot(int level);
 
 /* The row changed (Options screen or API). Applies or restores the pack; the engine reads the
  * text files again from the next load. Files already cached are dropped at the title and kept
- * (their old language) in game, where a window may still point into them. */
+ * (their old language) in game, where a speech task or a talk box may still hold the table. */
 void dw3_l10n_option_changed(int level);
 
 /* Sample how many bytes of replaced text files the file cache holds (called from the cache's

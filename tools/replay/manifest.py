@@ -3851,3 +3851,26 @@ _add(
              forbid_log=((0, r"dw3-l10n: override"),),
              note="a pack is installed and the option is Original: English, the original pictures"),
 )
+
+# P6.7 phase 2, the measuring pass (docs/LOCALIZATION.md section 7a): the same recordings with a
+# "stress" pack, every line as wide as the widest of the other four EU languages at that index
+# (the longest a translator was allowed), to see which windows do not hold it. Tier "repro": only
+# with --only (they are a look, with local references, not a gate). The windows: the message
+# and talk boxes (the opening), the battle menu and its lists, the battle report, the Digimon
+# Lab, the item shop, the card shop and deck editor, the card album, the gym, the field menu's
+# screens, the Items menu, the save and the load screens.
+_FIT_BASES = (("eu-newgame-field", "dialogue"), ("eu-battle-list-bar", "battle-menu"),
+              ("eu-battle-results", "battle-results"), ("eu-digimon-lab", "lab"),
+              ("eu-lab-digivolve", "lab-digivolve"), ("eu-item-shop", "item-shop"),
+              ("eu-card-shop", "card-shop"), ("eu-deck-editor", "deck-editor"),
+              ("eu-card-album", "card-album"), ("eu-gym", "gym"), ("eu-menu-screens", "menu-screens"),
+              ("eu-items-menu", "items-menu"), ("eu-save-screen", "save-screen"),
+              ("eu-load-menu", "load-menu"), ("eu-map-screen", "map-screen"))
+_by = {_s.name: _s for _s in SCENARIOS}
+for _base, _label in _FIT_BASES:
+    _b = _by[_base]
+    _add(dataclasses.replace(
+        _b, name=f"eu-l10n-fit-{_label}", tier="repro", l10n="stress", ref_from="", own_refs=(), ref_map=(),
+        cfg=_b.cfg + _L10N_CFG, expect_log=_b.expect_log + tuple((i, r.replace("synthetic=upper", "synthetic=stress")) for i, r in _L10N_ON),
+        forbid_log=_L10N_OFF_BAD,  # the longer text can change the timing a base scenario's forbid lines rely on
+        note=f"measuring pass: {_base} with the longest PT-like strings (stress pack)"))

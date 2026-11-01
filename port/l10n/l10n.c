@@ -80,7 +80,7 @@ static void l10n_atexit(void) {
     }
 }
 
-/* Drop the cached text files that are loaded: safe at the title, where no text window exists. */
+/* Drop the cached text files that are loaded: safe at the title, where no speech task or talk box exists. */
 static int evict_loaded(void) {
     int i, n = 0;
 

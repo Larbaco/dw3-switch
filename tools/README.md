@@ -8,7 +8,9 @@ unpack; add Switch-specific packers here later.
 `l10n/extract_text.py` extracts the game text from the owner's runtime into an editable template
 (outside git) and checks a PT-BR translation (`--check`); see
 [LOCALIZATION](../docs/LOCALIZATION.md). It never writes inside the repository unless the path
-is git-ignored.
+is git-ignored. `l10n/build_pack.py` turns a translated template folder into the local text pack the port
+reads (`<runtime>/l10n/ptbr/`, never committed), or a synthetic pack (`--synthetic upper|partial|stress|proof`)
+for tests, and verifies a pack (`--verify`).
 
 `dump_font_cells.py` dumps the font icon cells (PS button icons) from the
 owner's runtime for P10.6 ([P10.6_GLYPHS](../docs/P10.6_GLYPHS.md)); output goes
