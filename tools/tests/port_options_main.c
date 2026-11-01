@@ -42,7 +42,7 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 29) {
+    if (dw3_port_options_count() != 30) {
         return fail("option count");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_BATTLE_MENU) != 0 ||
@@ -171,7 +171,7 @@ int main(void) {
      * every registry row is in exactly one group, a long list scrolls. */
     {
         int ids[DW3_OPTGRP_COUNT];
-        int seen[29] = {0};
+        int seen[30] = {0};
         int g, k;
 
         /* D1: Display, Sound, Gameplay, Menus, Controls, Saves, Cheats, Advanced,
@@ -195,7 +195,7 @@ int main(void) {
                 seen[dw3_optgroups[g].rows[k]]++;
             }
         }
-        for (k = 0; k < 29; k++) {
+        for (k = 0; k < 30; k++) {
             if (k == DW3_PORT_OPT_REGION) continue; /* combined image only */
             if (k == DW3_PORT_OPT_SWITCH_GLYPHS && !DW3_OPT_GLYPHS_ROW) continue; /* Switch only */
             if (seen[k] != 1) {

@@ -37,7 +37,7 @@ unsigned dw3_port_options_locked_mask(void);
 /* The mask the screen opens with at the title (0) or in game: lets the
  * native overlay draw that layout before the screen is opened. */
 unsigned dw3_port_options_locked_mask_for(int in_game);
-/* D1: registry rows now run to 28 (D5 added one), so the Cheats entry moved from bit 16 to
+/* D1: registry rows ran to 28 (D5 added one; P6.7 row 29), so the Cheats entry moved from bit 16 to
  * bit 30 (bit 31 is the in-game mark of the overlay's layer key). */
 enum { DW3_PORT_OPTIONS_LOCK_CHEATS = 1u << 30 };
 void dw3_port_options_close(void);
@@ -116,7 +116,13 @@ enum {
      * a Display row (Nearest / Sharp bilinear / Lanczos2 / FSR 1 / Bilinear).
      * Stored as a DW3_MAPSCALER_* (the order of map_view_core.h MV_SCALER_*),
      * written as a word: map_scaler=fsr1. Default FSR 1. */
-    DW3_PORT_OPT_MAP_SCALER = 28
+    DW3_PORT_OPT_MAP_SCALER = 28,
+    /* P6.7 (docs/LOCALIZATION.md): the language of the game's text, a Display row.
+     * 0 = Original (the disc's own text), 1 = Portuguese (BR) from a local text pack
+     * (port_l10n.h). The file holds the words, text_language=original|ptbr;
+     * DW3_LANG=ptbr pins it for one run. Row 29 is the last the lock mask has room for:
+     * bit 30 is the Cheats entry and bit 31 the overlay's in-game mark. */
+    DW3_PORT_OPT_TEXT_LANGUAGE = 29
 };
 
 /* D5: the values of the Map scaler row, in the order of map_view_core.h's

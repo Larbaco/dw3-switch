@@ -5,6 +5,7 @@
           --out ~/.cache/dw3-switch/runtime/eu/l10n/ptbr
   python3 tools/l10n/build_pack.py --synthetic upper --region eu --out PACKDIR
   python3 tools/l10n/build_pack.py --synthetic stress --region eu --out PACKDIR
+  python3 tools/l10n/build_pack.py --templates DIR --keys ...   also write the key variants
   python3 tools/l10n/build_pack.py --verify PACKDIR [--region eu]
 
 Reads the owner's runtime (the English text files, for the structure, the
@@ -12,8 +13,11 @@ fallback strings and the source hashes) and a translated template folder
 (extract_text.py), and writes a pack folder:
 
   pack.json      format, region, language, the sha256 of every SOURCE English file,
-                 and per output file: id, stem, bytes, sha256, string counts
+                 and per output file: id, stem, bytes, sha256, string counts and the first
+                 32 keys kept in English (the loader logs them)
   <fileid>.bin   one finished text file per English file id, same container
+  <fileid>.k.bin (--keys) the same with every string started by its key, "(TALK03:412) ": the
+                 port reads these with DW3_L10N_SHOW_KEYS=1, to find a string seen in the game
 
 An empty "pt" keeps the original English bytes of that string, so a half-finished
 translation is playable. The loader refuses a pack whose source hashes do not match
@@ -24,6 +28,11 @@ the loader, the font and the boxes can be tested before any translation exists:
 
   upper    every string upper-cased, with "AN" -> "ãN", "ON" -> "õN", "CE" -> "çE"
            (lower-case ã õ ç next to capitals: they show the glyphs without a translation)
+  proof    English, except two card messages (MEMCRD:29, "Choose MEMORY CARD slot.", and MEMCRD:12,
+           "File cannot be found.", shown by Title > Load Game on an empty card): they are the
+           glyph proof, the 26 accented letters PT-BR needs and ¡ ¿ ° (29 characters)
+  partial  "upper" on two strings in three, the third keeps the English (a half-finished
+           translation: the fallback path)
   stress   every line padded with accented letters up to the widest line the other
            four EU languages have at the same index (limit_px), the longest text a
            translator was allowed; for the measuring pass of phase 2
@@ -48,10 +57,15 @@ import textfmt as T  # noqa: E402
 
 PACK_FORMAT = "dw3-l10n-pack-v1"
 SECTOR = 2048
-# The loader's sanity limits (port/l10n/l10n_pack.h): a pack is at most this many files.
+# The loader's sanity limits (port/l10n/l10n_core.h): a pack is at most this many files.
 MAX_FILES = 64
+KEYS_MAX = 32  # fallback keys listed per file, for the loader's log (port/l10n/l10n_core.h)
 LANG_RE = re.compile(r"^[a-z][a-z0-9]{1,15}$")
 _TOKEN = re.compile(r"\{[^}]*\}")
+SYNTHETIC = ("upper", "partial", "stress", "proof")
+PROOF_PAGES = ("ÁÀÂÃÉÊÍÓÔÕÚÇÜ\náàâãéêíóôõúçü\n¡ ¿ °", "AÃ OÕ EÊ OÔ aã oõ eê oô\n¡Hola! ¿Qué? 20°")
+PROOF_KEYS = {"MEMCRD:12": PROOF_PAGES[0], "MEMCRD:29": PROOF_PAGES[1]}  # "File cannot be found." and "Choose MEMORY CARD slot."
+PROOF_CHARS = 29  # 13 + 13 accented letters and ¡ ¿ °
 FILLER = "ãõçéêáíóúÃÕÊÔmw"  # wide letters, with the accents PT-BR needs
 
 
@@ -128,6 +142,18 @@ def synth_stress(text: str, limit_px: int | None, codec: T.Codec, style: T.Metri
     return "\n".join(lines)
 
 
+def _transform(kind, tpl, n, e, codec, style):
+    if kind == "upper":
+        return synth_upper(e["en"], codec)
+    if kind == "proof":
+        return PROOF_KEYS.get(e["key"], "")
+    if kind == "partial":
+        return synth_upper(e["en"], codec) if n % 3 else ""
+    if kind == "stress":
+        return synth_stress(e["en"], e.get("limit_px"), codec, style)
+    raise PackError("unknown --synthetic %r (%s)" % (kind, ", ".join(SYNTHETIC)))
+
+
 def synthetic_templates(kind: str, region: str, runtime: Path, decomp: Path) -> dict[str, dict]:
     """Templates (extract_text.py shape) with pt filled by a synthetic transform."""
     try:
@@ -140,23 +166,28 @@ def synthetic_templates(kind: str, region: str, runtime: Path, decomp: Path) -> 
     codec = T.codec_for(region)
     style = metrics[X.DIALOGUE_STYLE] if metrics else None
     for tpl in tpls.values():
-        for e in tpl["entries"]:
+        for n, e in enumerate(tpl["entries"]):
             if not e["en"]:
                 continue
-            if kind == "upper":
-                e["pt"] = synth_upper(e["en"], codec)
-            elif kind == "stress":
-                e["pt"] = synth_stress(e["en"], e.get("limit_px"), codec, style)
-            else:
-                raise PackError(f"unknown --synthetic {kind!r} (upper, stress)")
+            e["pt"] = _transform(kind, tpl, n, e, codec, style)
+            if e["pt"] and X.buffer_problem(e["key"], e["pt"], codec):
+                e["pt"] = ""  # the engine copies this string into a fixed buffer: keep the English
     return tpls
 
 
 # --------------------------------------------------------------------------
 # the builder
 
-def build_file(src: bytes, tpl: dict, codec: T.Codec):
-    """(output bytes, strings, translated, fallback keys, errors) for one text file.
+def keyed(text: str, key: str) -> str:
+    """text with its key in front, after the speaker's {start} when there is one."""
+    prefix = "(%s) " % key
+    if "{start}" in text:
+        return text.replace("{start}", "{start}" + prefix, 1)
+    return prefix + text
+
+
+def build_file(src: bytes, tpl: dict, codec: T.Codec, with_keys: bool = False):
+    """(output bytes, strings, translated, fallback keys, errors, key variant or None) for one text file.
 
     src is the English file of the runtime. A string with a non-empty pt is encoded; any other
     keeps its original bytes. The container (table or archive of tables) is rebuilt with new offsets."""
@@ -173,9 +204,11 @@ def build_file(src: bytes, tpl: dict, codec: T.Codec):
     fallback: list[str] = []
     errors: list[str] = []
     new_tables: list[list[bytes]] = []
+    key_tables: list[list[bytes]] = []
     seen = set()
     for t, table in enumerate(cont.tables):
         new_table = []
+        key_table = []
         for i, raw in enumerate(table):
             key = "%s:%d:%d" % (stem, t, i) if cont.kind == "archive" else "%s:%d" % (stem, i)
             seen.add(key)
@@ -187,22 +220,29 @@ def build_file(src: bytes, tpl: dict, codec: T.Codec):
                 if e.get("en") is not None and e["en"] != T.decode(raw, codec):
                     errors.append(f"{key}: the English changed since the template was made (another disc dump?)")
                     new_table.append(raw)
+                    key_table.append(raw)
                     continue
                 try:
                     new_table.append(T.encode(pt, codec))
                     translated += 1
+                    key_table.append(T.encode(keyed(pt, key), codec) if with_keys else b"")
                 except T.EncodeError as ex:
                     errors.append(f"{key}: {ex}")
                     new_table.append(raw)
+                    key_table.append(raw)
             else:
                 new_table.append(raw)
-                fallback.append(key)
+                key_table.append(T.encode(keyed(T.decode(raw, codec), key), codec) if with_keys and raw else raw)
+                if raw:  # an empty string has nothing to translate
+                    fallback.append(key)
         new_tables.append(new_table)
+        key_tables.append(key_table)
     for key in by_key:
         if key not in seen:
             errors.append(f"{key}: the file has no such string")
     out = T.build_container(T.Container(cont.kind, new_tables))
-    return out, sum(len(t) for t in new_tables), translated, fallback, errors
+    kout = T.build_container(T.Container(cont.kind, key_tables)) if with_keys else None
+    return out, sum(len(t) for t in new_tables), translated, fallback, errors, kout
 
 
 def source_files(runtime: Path, region: str) -> dict[str, tuple[int, bytes]]:
@@ -217,7 +257,7 @@ def source_files(runtime: Path, region: str) -> dict[str, tuple[int, bytes]]:
 
 
 def build_pack(templates: dict[str, dict], runtime: Path, region: str, lang: str, out: Path,
-               synthetic: str | None = None) -> dict:
+               synthetic: str | None = None, with_keys: bool = False) -> dict:
     """Write the pack folder. Returns the pack.json dict. Raises PackError on a bad input."""
     if not LANG_RE.match(lang):
         raise PackError(f"bad language code {lang!r}")
@@ -229,20 +269,25 @@ def build_pack(templates: dict[str, dict], runtime: Path, region: str, lang: str
     errors: list[str] = []
     fb_total = 0
     blobs: dict[int, bytes] = {}
+    kblobs: dict[int, bytes] = {}
     for stem in sorted(sources):
         fid, src = sources[stem]
         tpl = templates.get(stem)
         if tpl is None:
             raise PackError(f"the template folder has no {stem}.json")
-        data, n, tr, fb, errs = build_file(src, tpl, codec)
+        data, n, tr, fb, errs, kdata = build_file(src, tpl, codec, with_keys)
         errors += [f"{stem} {e}" for e in errs]
         fb_total += len(fb)
         blobs[fid] = data
+        if kdata is not None:
+            kblobs[fid] = kdata
         files.append({
             "id": fid, "stem": stem, "file": f"{fid}.bin", "bytes": len(data), "sectors": -(-len(data) // SECTOR),
             "sha256": sha256(data), "src_bytes": len(src), "src_sha256": sha256(src),
-            "strings": n, "translated": tr, "fallback": len(fb),
+            "strings": n, "translated": tr, "fallback": len(fb), "fallback_keys": fb[:KEYS_MAX],
         })
+        if kdata is not None:
+            files[-1].update(keys_bytes=len(kdata), keys_sectors=-(-len(kdata) // SECTOR))
         if len(files) > MAX_FILES:
             raise PackError("too many files")
     if errors:
@@ -250,6 +295,7 @@ def build_pack(templates: dict[str, dict], runtime: Path, region: str, lang: str
     files.sort(key=lambda f: f["id"])
     pack = {
         "format": PACK_FORMAT, "region": region, "language": lang, "synthetic": synthetic,
+        **({"proof_chars": PROOF_CHARS} if synthetic == "proof" else {}),
         "files": files,
         "totals": {"files": len(files), "strings": sum(f["strings"] for f in files),
                    "translated": sum(f["translated"] for f in files), "fallback": fb_total},
@@ -259,7 +305,9 @@ def build_pack(templates: dict[str, dict], runtime: Path, region: str, lang: str
         f.unlink()
     for fid, data in blobs.items():
         (out / f"{fid}.bin").write_bytes(data)
-    # one file entry per line: the loader's reader is a small scanner (port/l10n/l10n_pack.c)
+    for fid, data in kblobs.items():
+        (out / f"{fid}.k.bin").write_bytes(data)
+    # one file entry per line: the loader's reader is a small scanner (port/l10n/l10n_core.c)
     head = {k: v for k, v in pack.items() if k != "files"}
     text = "{\n" + ",\n".join(f" {json.dumps(k)}: {json.dumps(v)}" for k, v in head.items() if k != "totals")
     text += ",\n \"files\": [\n" + ",\n".join("  " + json.dumps(f, separators=(", ", ": ")) for f in files)
@@ -301,6 +349,18 @@ def verify_pack(pack_dir: Path, runtime: Path | None, region: str | None) -> lis
         except T.TextFormatError as ex:
             problems.append(f"{f['file']}: {ex}")
             continue
+        if f.get("keys_bytes"):
+            kpath = pack_dir / f"{f['id']}.k.bin"
+            try:
+                kdata = kpath.read_bytes()
+                if len(kdata) != f["keys_bytes"]:
+                    problems.append(f"{kpath.name}: size differs from pack.json")
+                else:
+                    kc = T.parse_container(kdata)
+                    if [len(t) for t in kc.tables] != [len(t) for t in out_c.tables]:
+                        problems.append(f"{kpath.name}: string counts differ from {f['file']}")
+            except (OSError, T.TextFormatError) as ex:
+                problems.append(f"{kpath.name}: {ex}")
         src_entry = sources.get(f["stem"]) if sources else None
         if sources and src_entry is None:
             problems.append(f"{f['stem']}: not in the runtime")
@@ -344,7 +404,8 @@ def main(argv=None) -> int:
     ap.add_argument("--region", choices=("eu", "us"), default="eu")
     ap.add_argument("--lang", default="ptbr", help="language code of the pack folder (default ptbr)")
     ap.add_argument("--templates", type=Path, help="translated template folder (extract_text.py output)")
-    ap.add_argument("--synthetic", choices=("upper", "stress"), help="build from the English with a visible transform")
+    ap.add_argument("--synthetic", choices=SYNTHETIC, help="build from the English with a visible transform")
+    ap.add_argument("--keys", action="store_true", help="also write <id>.k.bin, every string started by its key (DW3_L10N_SHOW_KEYS=1)")
     ap.add_argument("--out", type=Path, help="pack folder (default <runtime>/<region>/l10n/<lang>)")
     ap.add_argument("--decomp", type=Path, default=X.ROOT / "vendor" / "dw3_decomp", help="decomp source, for the glyph widths")
     ap.add_argument("--verify", type=Path, metavar="PACKDIR", help="check a pack folder (and its source hashes with the runtime)")
@@ -369,7 +430,7 @@ def main(argv=None) -> int:
             tpls = synthetic_templates(a.synthetic, a.region, a.runtime, a.decomp)
         else:
             tpls = load_templates(a.templates)
-        pack = build_pack(tpls, a.runtime, a.region, a.lang, out, a.synthetic)
+        pack = build_pack(tpls, a.runtime, a.region, a.lang, out, a.synthetic, a.keys)
     except (PackError, OSError, T.TextFormatError, KeyError) as ex:
         print(f"error: {ex}", file=sys.stderr)
         return 1

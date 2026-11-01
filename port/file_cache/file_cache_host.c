@@ -1,11 +1,14 @@
 /* File cache slot policy of the host (see port_file_cache.h). */
 #include "port_file_cache.h"
+#include "port_l10n.h"
 
 #include <psyz/log.h>
 #include <stdlib.h>
 
 int dw3_port_file_cache_slots(int total) {
     static int limit;
+
+    dw3_l10n_sample_text(); /* P6.7: the text pack's heap high water, once per file request */
 
     if (limit == 0) {
         const char *env = getenv("DW3_FILE_CACHE_SLOTS");

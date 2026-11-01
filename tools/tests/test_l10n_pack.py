@@ -50,9 +50,10 @@ def test_builder_translates_and_falls_back(rt, tpls, tmp_path):
     assert pack["format"] == B.PACK_FORMAT and pack["language"] == "ptbr" and pack["region"] == "eu"
     by = {f["stem"]: f for f in pack["files"]}
     assert set(by) == {"SYSTEM", "DMG200"}
-    # SYSTEM: 3 strings (one is empty), two translated, the empty one falls back
+    # SYSTEM: 3 strings (one is empty), two translated; the empty one has nothing to fall back to
     s = by["SYSTEM"]
-    assert (s["strings"], s["translated"], s["fallback"]) == (3, 2, 1)
+    assert (s["strings"], s["translated"], s["fallback"]) == (3, 2, 0)
+    assert s["fallback_keys"] == []
     data = (out / s["file"]).read_bytes()
     assert len(data) == s["bytes"] and s["sectors"] == 1
     c = T.parse_container(data)
@@ -63,7 +64,8 @@ def test_builder_translates_and_falls_back(rt, tpls, tmp_path):
     assert T.decode(d.tables[0][0], EU) == "Hi {name:0}"
     assert T.decode(d.tables[0][1], EU) == "Espere{wait:2}{pg}Vá"
     assert T.decode(d.tables[1][0], EU) == "Second table"
-    assert pack["totals"] == {"files": 2, "strings": 6, "translated": 3, "fallback": 3}
+    assert by["DMG200"]["fallback_keys"] == ["DMG200:0:0", "DMG200:1:0"]
+    assert pack["totals"] == {"files": 2, "strings": 6, "translated": 3, "fallback": 2}
 
 
 def test_pack_json_records_source_hashes_and_is_scannable(rt, tpls, tmp_path):
@@ -218,6 +220,9 @@ def test_synthetic_templates_build_a_pack(rt, tmp_path, monkeypatch):
     pack = B.build_pack(tp, rt, "eu", "ptbr", tmp_path / "pack", "upper")
     assert pack["synthetic"] == "upper"
     assert B.verify_pack(tmp_path / "pack", rt, "eu") == []
+    part = B.synthetic_templates("partial", "eu", rt, decomp)
+    pk = B.build_pack(part, rt, "eu", "ptbr", tmp_path / "pack3", "partial")
+    assert 0 < pk["totals"]["translated"] < 6 and pk["totals"]["fallback"] > 0
     st = B.synthetic_templates("stress", "eu", rt, decomp)
     B.build_pack(st, rt, "eu", "ptbr", tmp_path / "pack2", "stress")
     with pytest.raises(B.PackError):
@@ -270,3 +275,120 @@ def test_no_template_or_pack_of_game_text_is_tracked():
             assert not marker.search(f.read_bytes()), f"{path} looks like a template or a pack of game text"
     assert not _tracked(r"(^|/)l10n/[a-z0-9]+/[0-9]+\.bin$")
     assert not _tracked(r"(^|/)tmp/l10n/")
+
+
+# --------------------------------------------------------------------------
+# key variants and the glyph proof
+
+def test_key_variants_start_every_string_with_its_key(rt, tpls, tmp_path):
+    tpls["SYSTEM"]["entries"][0]["pt"] = "Sim"
+    tpls["DMG200"]["entries"][0]["pt"] = "Oi {name:0}"
+    out = tmp_path / "pack"
+    pack = B.build_pack(tpls, rt, "eu", "ptbr", out, with_keys=True)
+    by = {f["stem"]: f for f in pack["files"]}
+    s = by["SYSTEM"]
+    k = T.parse_container((out / f"{s['id']}.k.bin").read_bytes())
+    texts = [T.decode(x, EU) for x in k.tables[0]]
+    assert texts == ["(SYSTEM:0) Sim", "(SYSTEM:1) No\nLong second line", ""]  # the empty string stays empty
+    assert s["keys_bytes"] == (out / f"{s['id']}.k.bin").stat().st_size and s["keys_sectors"] == 1
+    d = T.parse_container((out / f"{by['DMG200']['id']}.k.bin").read_bytes())
+    assert T.decode(d.tables[0][0], EU) == "(DMG200:0:0) Oi {name:0}"
+    assert T.decode(d.tables[1][0], EU) == "(DMG200:1:0) Second table"
+    assert B.verify_pack(out, rt, "eu") == []
+    # the normal files are untouched by the option
+    plain = B.build_pack(tpls, rt, "eu", "ptbr", tmp_path / "plain")
+    assert (tmp_path / "plain" / f"{s['id']}.bin").read_bytes() == (out / f"{s['id']}.bin").read_bytes()
+    assert "keys_bytes" not in plain["files"][0] and not list((tmp_path / "plain").glob("*.k.bin"))
+
+
+def test_the_key_goes_after_the_speaker():
+    assert B.keyed("Guard{start}Halt!", "TALK01:7") == "Guard{start}(TALK01:7) Halt!"
+    assert B.keyed("Halt!", "TALK01:7") == "(TALK01:7) Halt!"
+
+
+def test_rebuild_without_keys_removes_old_key_variants(rt, tpls, tmp_path):
+    out = tmp_path / "pack"
+    B.build_pack(tpls, rt, "eu", "ptbr", out, with_keys=True)
+    assert list(out.glob("*.k.bin"))
+    B.build_pack(tpls, rt, "eu", "ptbr", out)
+    assert not list(out.glob("*.k.bin"))
+
+
+def test_proof_pack_carries_the_29_characters_in_two_card_messages(rt, tmp_path):
+    decomp = write_fake_decomp(tmp_path / "decomp")
+    # a runtime with a MEMCRD file of 41 strings: the one text file the proof touches
+    strings = [m("s%d" % i) for i in range(41)]
+    (rt / "eu" / "AAA/DAT/COUNTRY/ENG/ESMEMCRD.BIN").write_bytes(T.build_table(strings))
+    files = json.loads((rt / "eu/files_eu.json").read_text())
+    files["files"]["77"] = {"path": "AAA/DAT/COUNTRY/ENG/ESMEMCRD.BIN", "lba": 77, "sectors": 1, "bytes": 1, "form": 1}
+    (rt / "eu/files_eu.json").write_text(json.dumps(files))
+    tp = B.synthetic_templates("proof", "eu", rt, decomp)
+    pack = B.build_pack(tp, rt, "eu", "ptbr", tmp_path / "pack", "proof")
+    assert pack["proof_chars"] == B.PROOF_CHARS == 29
+    shown = set("".join(B.PROOF_PAGES[:1]).replace("\n", "").replace(" ", ""))
+    assert len(shown) == 13 + 13 + 3
+    c = T.parse_container((tmp_path / "pack" / "77.bin").read_bytes())
+    got = [T.decode(x, EU) for x in c.tables[0]]
+    assert got[12] == B.PROOF_PAGES[0] and got[29] == B.PROOF_PAGES[1]
+    assert [g for i, g in enumerate(got) if i not in (12, 29)] == [T.decode(x, EU) for i, x in enumerate(strings) if i not in (12, 29)]
+    assert all(ch in "".join(got) for ch in "ÃÕÊÔãõêô¡¿°")
+    # every other file is the English, untouched
+    sysf = next(f for f in pack["files"] if f["stem"] == "SYSTEM")
+    assert sysf["translated"] == 0
+
+
+# --------------------------------------------------------------------------
+# strings the engine copies into fixed buffers
+
+def test_card_title_must_fit_the_save_file_header():
+    assert X.buffer_problem("MEMCRD:39", "Digimon World 3", EU) is None
+    assert "33 characters" in X.buffer_problem("MEMCRD:39", "x" * 33, EU)
+    assert "Shift-JIS" in X.buffer_problem("MEMCRD:39", "Jogo salvo ação", EU)
+    assert X.buffer_problem("MEMCRD:38", "x" * 60, EU) is None  # only string 39 goes there
+
+
+def test_names_are_counted_in_bytes_of_the_game_encoding():
+    assert X.buffer_problem("NAMEDT:11", "x" * 12, EU) is None
+    assert "holds 23" in X.buffer_problem("NAMEDT:11", "ã" * 12, EU)       # an accent is 2 bytes
+    assert X.buffer_problem("NAMEDT:10", "ã" * 40, EU) is None
+    assert X.buffer_problem("CRDSHP:22", "x" * 21, EU) is None
+    assert X.buffer_problem("CRDSHP:24", "x" * 22, EU) and X.buffer_problem("CRDSHP:25", "x" * 22, EU) is None
+    assert X.buffer_problem("DIGNAM:200", "ç" * 12, EU)
+    assert X.buffer_problem("DIGNAM:200", "Kotemon", EU) is None
+
+
+def test_speaker_name_buffer():
+    assert X.buffer_problem("TALK03:12", "Guarda{start}Oi!", EU) is None
+    assert "speaker" in X.buffer_problem("TALK03:12", "ã" * 16 + "{start}Oi!", EU)
+    assert "speaker" in X.buffer_problem("DMG200:3:12", "ã" * 16 + "{start}Oi!", EU)
+    assert X.buffer_problem("TALK03:12", "Sem orador, " + "ã" * 40, EU) is None
+
+
+def test_check_reports_a_string_that_overflows_a_buffer(rt, tpls, tmp_path):
+    tdir = tmp_path / "tpl"
+    tpls["SYSTEM"]["stem"] = "NAMEDT"  # pretend: the file the default name lives in
+    tpls["SYSTEM"]["entries"] = [{"key": "NAMEDT:11", "en": "Tamer", "pt": "x" * 30, "limit_px": None, "max_lines": 1}]
+    X.write_templates(tdir, "eu", {"NAMEDT": tpls["SYSTEM"]}, X.stats({"NAMEDT": tpls["SYSTEM"]}))
+    rep = X.check_paths([tdir / "eu"], strict=False, decomp=tmp_path / "none", max_width=None, glossary=None,
+                        against=None, with_widths=False)
+    assert any("fixed buffer" in e and "NAMEDT:11" in e for e in rep.errors)
+
+
+def test_synthetic_transforms_keep_the_english_where_a_buffer_would_overflow(rt, tmp_path):
+    decomp = write_fake_decomp(tmp_path / "decomp")
+    # the stem DIGNAM, every string long: upper-casing adds accents (2 bytes) and must be reverted
+    dg = rt / "eu" / "AAA/DAT/COUNTRY/ENG/ESDIGNAM.BIN"
+    dg.write_bytes(T.build_table([m("Ancientgreymon"), m("Kotemon")]))
+    files = json.loads((rt / "eu/files_eu.json").read_text())
+    files["files"]["88"] = {"path": "AAA/DAT/COUNTRY/ENG/ESDIGNAM.BIN", "lba": 88, "sectors": 1, "bytes": 1, "form": 1}
+    (rt / "eu/files_eu.json").write_text(json.dumps(files))
+    tp = B.synthetic_templates("upper", "eu", rt, decomp)
+    pt = [e["pt"] for e in tp["DIGNAM"]["entries"]]
+    assert pt[1] == "KOTEMõN"           # fits: 8 bytes
+    assert len(T.encode(pt[0], EU)) <= 23 or pt[0] == ""
+    # a name that would pass 23 bytes only because of the accents is kept in English
+    long_name = "Ancientgreymon Xv Mm"  # 20 letters: 'AN' and 'ON' each add a byte
+    assert X.buffer_problem("DIGNAM:0", B.synth_upper(long_name, EU), EU) is not None
+    dg.write_bytes(T.build_table([m(long_name), m("Kotemon")]))
+    tp = B.synthetic_templates("upper", "eu", rt, decomp)
+    assert tp["DIGNAM"]["entries"][0]["pt"] == ""
