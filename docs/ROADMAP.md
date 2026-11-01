@@ -209,9 +209,9 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.3 | PGXP-style vertex precision | open | — |
 | P6.4 | Fast-forward | done (owner confirmed on the OLED, 2026-10-24; 1.5x in menus, patch 0176, confirmed 2026-10-27, preview.41) | [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.5 | Release packaging | done | [P6.5](P6.5_PACKAGING.md), [RELEASES](RELEASES.md) |
-| P6.6 | Localization goal | open | — |
-| P6.7 | Language packs (PT-BR first) | open | — |
-| P6.8 | Extra locales | open | — |
+| P6.6 | Localization goal | **note written 2026-11-01** (owner decision: **translation first, PT-BR for the game and for the port's own screens**); the approach, the legal line, how the game text works and the phased plan are in the note | [LOCALIZATION](LOCALIZATION.md) |
+| P6.7 | Language packs (PT-BR first) | **in progress, phase 0 built 2026-11-01 (PR open)**: design, `tools/l10n/extract_text.py` (template and `--check`), the `pt` drafts of Help, Walkthrough and Options lettering (owner review pending); chosen base: the **English slot plus a text overlay** (`text_language=ptbr`), the EU font already has every PT-BR accent; next: phase 1 pack builder and loader | [LOCALIZATION](LOCALIZATION.md) |
+| P6.8 | Extra locales | open (the same mechanism as P6.7; a real `LANGUAGE` id only if a language needs its own art, [LOCALIZATION](LOCALIZATION.md#3-pack-design) section 3.1) | [LOCALIZATION](LOCALIZATION.md) |
 | P6.9 | Restart-game hotkey | in progress (hotkey works on the OLED; PC replays pass for battle, save and Continue on US and EU; OLED retest open) | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
 | P6.11 | Internal resolution scaling | built 2026-11-01 (phases 1 to 3; PC and Switch, 2x clamp until the OLED run); OLED R0.x and R1-R8 open | [P6.11](P6.11_INTERNAL_RES.md), [PC README](../platforms/pc/README.md) |
@@ -1072,18 +1072,38 @@ gate, which stays open.
   game assets in git. Short note in `docs/` when the approach is chosen.
   Done when: the note exists and this section is the roadmap source of
   truth for i18n scope.
+  **Note written 2026-11-01:** [LOCALIZATION](LOCALIZATION.md). Owner decision
+  (2026-11-01): **prioritize translation, PT-BR for the game and for the port's
+  own screens.** The legal line: a PT-BR pack of the game's text is built locally
+  from the owner's disc and translation and is never committed or shipped; the
+  port's own text (Options, Help, Walkthrough, messages) is ours and lives in the
+  repo in PT-BR. Scope: P6.7 first, then P6.8. (Leave ticked when the owner
+  accepts the note.)
 - [ ] **P6.7 Language packs (PT-BR first).** Tooling and/or pack steps so
   the owner can replace (or remap) message tables and, if needed, font
   glyphs for Brazilian Portuguese on top of the P1.6 layout, preferably
   against the EU build that already indexes text by `LANGUAGE`.
   Done when: a short playthrough (title → field dialogue) shows PT-BR
   with the owner's pack and no shipped assets in the repo.
+  **Phase 0 built 2026-11-01 (PR open):** extraction tool and `--check`
+  (`tools/l10n/`), the design, the drafts. Findings: the EU English text is 13,084
+  strings in 50 files (6,901 unique, 77.7k words; 67.4k in the unique strings), the
+  US text is the same text (12,470 of 12,542 strings identical by key), the **EU font
+  carries every PT-BR letter** (`á à â ã é ê í ó ô õ ú ç ü` and the capitals) as icons
+  59 to 114, the US font does not. Chosen base: the English slot plus a text overlay
+  (`text_language=ptbr`, a pack folder under `runtime/<region>/l10n/ptbr/`, the
+  cdfs and `FILE_SECTORS` remap, per-string fallback to English). Phases 1 to 6, with
+  effort and the OLED rows L1 to L13, are in [LOCALIZATION](LOCALIZATION.md) section 7.
+  Open for the owner: where the Language row goes (a one-row group first, or Display),
+  the review of the PT-BR drafts, and the glossary.
 - [ ] **P6.8 Extra locales.** Same pack mechanism for other languages;
   selection via existing EU `LANGUAGE` / `CNTY_SEL` slots or a
   `port/cdfs` id remap without rebuilding the `.nro` for each locale.
   Done when: a second owner-supplied language switches at boot or
   country select and renders in-game text correctly.
   Overlap: P6.7 is the first case of this mechanism (see Backlog notes).
+  Plan: phase 6 of [LOCALIZATION](LOCALIZATION.md) (`l10n/<code>/` folders and a
+  language list in the Language row).
 - [ ] **P6.9 Restart-game hotkey.** Host button combo that resets the
   running game back to its boot/title flow **in-process**, without
   quitting the `.nro` to Sphaira/hbmenu or relaunching the console.

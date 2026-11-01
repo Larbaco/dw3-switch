@@ -309,3 +309,18 @@ commit per dependency either way.
 * **Not covered:** nothing ran on the Switch (a Ryubing or OLED run of the new `.nro`
   is open); the Switch software raster and `nx_gpu.c` follow the same PSY-Z core, so
   the polygon sampling change applies there too and has only been compiled.
+* **Fork CI.** Larbaco/psyz had no CI before the merge PR. Its first run is red (linter:
+  `make format` rewrites nine fork-authored files; psp: `test_libspu_bus.c` uses the host-only
+  bus API; the four windows jobs were not analysed). Left as is (owner decision, 2026-11-01);
+  the Linux, macOS, iOS, samples and decomp-build jobs are green.
+* **Picture drift accepted (owner decision via the orchestrator, 2026-11-01).** The upstream raster
+  and sampling changes (#204 corner sampling, #209 offsets, 15-bit truncation of untextured
+  polygons) are more accurate to the hardware, so the replay references of the 83 drifted
+  scenarios were refreshed from this build (plus the combined-binary `both/` overrides where the
+  combined binary differs). Before/after crops of the three largest drifts (a battle, the news
+  monitor, the door iris) are in `tmp/evidence/2026-11-01-deps-b2/crops/` of the main checkout
+  (not committed). The door iris differs by one level per channel, below the runner's tolerance,
+  so it needed no new reference.
+* **Replay manifest.** The `*-glyphs-*` log expectations said `map=playstation`; since D2 the
+  default layout is Nintendo, so the default-layout glyph scenarios now expect it (pictures
+  unchanged). A scenario that is about the PlayStation layout still has to pin `button_layout`.
