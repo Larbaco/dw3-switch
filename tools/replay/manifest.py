@@ -3799,3 +3799,19 @@ for _v in ("us", "eu"):
             own_refs=(), ref_from="",
             note=f"Options > Display > Output filter = {_word} ({_what}) on the battle report in a 1200x900 window "
                  f"(a non-integer stretch): the window grab differs from battle-report's, the PS1 frame does not"))
+
+# The same on the Switch build in Ryubing (tier "nx", log only: the replay NRO built with
+# DW3_NX_TEST_ENV="DW3_START_MODE=0x233,DW3_PROGRESS=6", like the spiral): the field (the opaque
+# program) and the battle (the mesh blit and the overlay program) with `output_filter=sharp`, so the
+# filtered GLES programs are compiled and run by the console's own driver stack. Log proof only.
+for _v, _ids in (("us", (0x158, 0x159)), ("eu", (0x166, 0x167))):
+    _field, _fight = _ids
+    _add(Scenario(f"{_v}-output-sharp-nx", _v, "nx", timeout=900,
+                  phases=(f"{_v}-ws-battle-spiral",),
+                  cfg=(("widescreen", "1"), ("output_filter", "sharp")),
+                  expect_restore=((_field, M), (_fight, M)),
+                  expect_log=((0, r"dw3-present: output filter sharp(?s:.*)"
+                                  r"dw3-present: output filter sharp scale \d+\.\d+x\d+\.\d+ \(\d+x\d+ texels on \d+x\d+\), prescale \dx\d"),),
+                  forbid_log=((0, r"output filter \S+ is not available"), (0, r"nx_gpu: shader \d+ failed"),
+                              (0, r"nx_mesh: shader compile failed"), (0, r"output filter programs failed")),
+                  note="Switch build: Output filter = Sharp bilinear through a field and a battle, the filtered GLES programs on the console's driver"))

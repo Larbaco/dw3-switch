@@ -239,6 +239,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.36 | Music at normal speed while turbo is on | phases 1 and 2 built (#356), phase 3 jingle hold (4 s, owner decision) built (merged as #361); phase 4 SFX split open | [roadmap](#phase-6-goal-notes), [P6.36](P6.36_TURBO_MUSIC.md), [P6.4](P6.4_FAST_FORWARD.md), [P4.3](P4.3_AUDIO.md) |
 | P6.37 | Port version visible in game | owner request 2026-10-30; **built 2026-10-30** (PR open, not merged): one label `dw3-switch v0.6.5-preview.57 (962462d) US` from `tools/dw3_nro_version.py` (the NACP source) in a dim footer line on every Options screen, in the title's bottom right corner (file-only key `show_version`, 1 default, 0 hides it), as the first log line `dw3-version:` and in the PC window title; replays pin the text with `DW3_VERSION_OVERRIDE=replay`; replay `us/eu-title-noversion`, `us/eu-options-noversion`; OLED A20 | [roadmap](#phase-6-goal-notes), [P6.37](P6.37_VERSION.md), [P6.5](P6.5_NRO_FORMAT.md) |
 | P6.38 | Restart into the chosen region: after switching US to EU or EU to US in Options > Region at start, the game offers to relaunch into it (owner request 2026-10-30; combined image only) | **built 2026-10-30 (PR open)**: leaving the row after a change to the other region asks `Restart in EU now?` (in game with `Progress since your last save will be lost.`, cursor on No); Yes saves, flushes and relaunches (Switch `envSetNextLoad` + `--relaunch-region`, PC `execv` from the last exit handler), No keeps "takes effect at the next start"; Ask and the running region never ask; a host that cannot relaunch shows `Restart the game to apply.`; **no decomp patch**; PC replays `us/eu-options-region-relaunch-no|yes|exec|game` (tier `both`); OLED A17.1 to A17.4 pending | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md#restart-into-the-chosen-region-p638), [P51 item 4](P51_FEEDBACK.md) |
+| P6.39 | Output filter: Nearest / Bilinear / Sharp bilinear for the final stretch (P6.11 section 10.6 point 4; the docked 4.5x stretch is rough with Nearest) | **built 2026-11-01 (PR open)**: Options > Display > Output filter (registry 29, key `output_filter`, **default Nearest** = today's look); Switch GLES filtered programs (opaque, overlay over the battle mesh, mesh blit; `texelFetch`, one fetch in the middle of a texel) and PC (psyz fork `Psyz_VideoSetOutputFilter`: integer nearest prescale then linear blit); log `dw3-present: output filter <name>`; **no decomp patch**; PC replays `us/eu-output-sharp-bilinear`, `-43`, `output-bilinear` (window grab only); GPU test on Mesa GL ES 3; OLED rows OF1 to OF8 pending; default proposal in the PR | [OUTPUT_FILTER](OUTPUT_FILTER.md), [PORT_OPTIONS](PORT_OPTIONS.md#output-filter-registry-29) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -2932,6 +2933,19 @@ Statuses are in the [table](#status-at-a-glance).
   also queues itself); native review of the FR / DE / IT / ES lines.
   Related: P51 item 4, P6.24, P6.9, P6.27, P6.28, P9.7.
 
+- [~] **P6.39 Output filter (Options > Display).** Dated 2026-11-01, the item the P6.11
+  field study recommended ([P6.11 10.6](P6.11_INTERNAL_RES.md#106-recommendation), point 4): docked, the 2D
+  picture is stretched 4.5x to 1080p and Nearest makes the pixel columns alternate between 4 and 5 output
+  pixels. A Display row (rule 8) with Nearest (default, today's look), Bilinear and Sharp bilinear (an integer
+  nearest step and a short bilinear seam; exactly Nearest at the handheld 3x). **Built 2026-11-01 (PR open, no
+  decomp patch):** Switch: filtered variants of the 16-bit opaque and overlay programs and of the battle mesh blit
+  (`nx_output_filter.h`), built only when a filter is picked; PC: `Psyz_VideoSetOutputFilter` in the psyz fork
+  (`dw3-output-filter`). Registry 29; PT-BR and FR / DE / IT / ES lettering and help text; log
+  `dw3-present: output filter <name>`. Tests: `tools/output_filter_gpu_test.c` (the real shaders on Mesa GL ES 3
+  against a CPU reference), the options unit tests, PC replays (window grab only; every other scenario is pinned
+  to Nearest by the runner). Open: the OLED rows OF1 to OF8 (looks docked and handheld, the GPU cost with the
+  P6.11 probe), the owner's call on the default (proposal in [OUTPUT_FILTER](OUTPUT_FILTER.md): keep Nearest, or
+  flip Sharp bilinear with a defaults generation 3 once the rows pass).
 - [~] **P6.37 Port version visible in game.** Owner request 2026-10-30: OLED
   test reports and bug reports must name the build, and today the version only
   reaches hbmenu (the 15 character NACP version, `0.6.5-p.56`) and a boot log

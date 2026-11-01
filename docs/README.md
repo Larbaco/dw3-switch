@@ -11,6 +11,7 @@ Files are named by roadmap item id (`P6.4_...`) or by topic.
 - [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md): design of the controls bundle (P6.12 button remap, P9.8 confirm layout, P10.6 Switch glyphs).
 - [P10.6_GLYPHS](P10.6_GLYPHS.md): P10.6 step 0: where the game draws the PS button icons, the dump tool, the glyph art and patch plan.
 - [PORT_OPTIONS](PORT_OPTIONS.md): the Options screen, the Cheats screen, Quit and Return to title.
+- [OUTPUT_FILTER](OUTPUT_FILTER.md): P6.39, Options > Display > Output filter (Nearest / Bilinear / Sharp bilinear): how the present stretches the picture on the Switch and the PC, the shader math, cost, tests and log lines.
 - [OPTIONS_REORG](OPTIONS_REORG.md): D1 design (2026-10-31, owner approval pending): audit of every behaviour key, the port-wide "every change is switchable" rule, the reorganized group tree with ASCII mocks, migration and questions.
 - [LOCALIZATION](LOCALIZATION.md): P6.6 to P6.8, PT-BR first: the legal line, how the game text and font work (EU accents), the pack and loader design, the extraction tool, the translation workflow, the phased plan and the OLED rows.
 - [DISC_SETUP](DISC_SETUP.md): from your disc image to the extracted tree and file map.

@@ -187,7 +187,7 @@ Rules, implemented in `port/options/options_cfg.c` and `port/options/port_option
 
 | Case | Behaviour |
 |---|---|
-| No file | Defaults (Widescreen ON, Fast-forward 2x armed, Restart hotkey OFF, Music volume 10, SFX volume 10, Encounter rate 1x, Text speed Normal, Battle cursor OFF, Button layout Nintendo, Switch glyphs ON on the Switch and OFF on the PC, Map scaler FSR 1). The file is first written on the first change, not at boot; it is born with `defaults_gen=2` and is never migrated. |
+| No file | Defaults (Widescreen ON, Fast-forward 2x armed, Restart hotkey OFF, Music volume 10, SFX volume 10, Encounter rate 1x, Text speed Normal, Battle cursor OFF, Button layout Nintendo, Switch glyphs ON on the Switch and OFF on the PC, Map scaler FSR 1, Output filter Nearest). The file is first written on the first change, not at boot; it is born with `defaults_gen=2` and is never migrated. |
 | `defaults_gen` below 2 or missing, in a file that exists (D2) | One-shot migration at load: `button_layout=playstation` becomes `nintendo`, `switch_glyphs=0` becomes `1` **on the Switch only** (the PC has no row: the key is left, the log says `kept: switch_glyphs (pc)`); `custom`, `nintendo`, `switch_glyphs=1` and missing keys are left. The file is written at once with `defaults_gen=2`. |
 | Missing key | That option keeps its default. |
 | Invalid value (not an integer, or out of range: Fast-forward must be 0 or 2..4, the volumes 0..10, `encounter_rate` 0..4, `text_speed` 0..2, `battle_menu_memory` 0..2, the others (`autosave` too) 0 or 1) | That option falls back to its default and a `dw3-options: <key>=<v> is not valid` line is logged. The bad line is replaced on the next save. |
@@ -241,7 +241,8 @@ the file's value alone.
 under. A file with no such key counts as 1, the generation before D2; this build writes **2** on every save
 and migrates a file below 2 once at load (below). `map_scaler` (D5) is the second **word** key,
 `nearest`, `sharp`, `lanczos2`, `fsr1` or `bilinear` (default `fsr1`): the **Map scaler** row of Display
-([below](#defaults-generation-and-the-map-scaler-d2--d5)).
+([below](#defaults-generation-and-the-map-scaler-d2--d5)). `output_filter` is the third word key, `nearest`, `bilinear`
+or `sharp` (default `nearest`): the **Output filter** row of Display ([below](#output-filter-registry-29)).
 
 `items_partner_switch` (P6.33, 0 or 1, default 1) is the **Partner switch** row of the Menus group (D1):
 read by `dw3_port_items_partner_switch_enabled`, saved with every other row. A missing
@@ -2262,7 +2263,7 @@ overlay's page codes did not change, so the order table is the only thing that m
 
 | # | Group | Rows (registry index) | Rows on screen: PC US plain / Switch combined |
 |---|---|---|---|
-| 1 | Display | Widescreen (0), Full-screen map (15), **Map scaler (28, D5)**, Map mod pack (22), Version label (21) | 5 / 5 |
+| 1 | Display | Widescreen (0), Full-screen map (15), **Map scaler (28, D5)**, **Output filter (29)**, Map mod pack (22), Version label (21) | 6 / 6 |
 | 2 | Sound | Music volume (3), SFX volume (4), Turbo music (13) | 3 / 3 |
 | 3 | Gameplay | Fast-forward (1), Encounter rate (5), Text speed (6), Battle cursor (7) | 4 / 4 |
 | 4 | Menus | Equip from Items (16), Equip stays on list (17), Whole bag (18), Use item stays (19), Partner switch (20), Instant menu exit (27) | 6 / 6 |
@@ -2293,7 +2294,7 @@ except the sub-screens that scroll (Cheats, Customize, Map buttons). The cfg tab
 | Shared saves (exp.) | **title only** (greyed in game: the cards are opened before it is read) | next start; Yes / No window when turned on |
 | Stage sweep, Frames per stage | **title only** (greyed in game), builds with the Cheats feature | next start; Yes / No window for Run and Start over |
 
-The lock mask of the overlay (`dw3_port_options_locked_mask`) is now 29 bits wide (registry rows 0 to 28, D5; 27 is Instant menu exit, patch 0200); the
+The lock mask of the overlay (`dw3_port_options_locked_mask`) is now 30 bits wide (registry rows 0 to 29, Output filter; 27 is Instant menu exit, patch 0200, 28 the Map scaler); the
 Cheats entry's bit moved from 16 to 30 (`DW3_PORT_OPTIONS_LOCK_CHEATS`, `DW3_TITLE_LOCK_CHEATS`).
 
 ### Map buttons (Controls > Map buttons)
@@ -2336,9 +2337,9 @@ Map view pages name the new places (Options > Controls > Restart hotkey, Options
 ### Key budget
 
 The cfg holds at most 48 entries and 4096 bytes. With every key in one file the port keeps 24 registry keys
-(D5 added `map_scaler`), `button_map`, the 7 `map_view_*` keys, `cheat_enabled`, `cheat_instant_win` and the two
+(D5 added `map_scaler`, the Output filter `output_filter`), `button_map`, the 7 `map_view_*` keys, `cheat_enabled`, `cheat_instant_win` and the two
 markers `defaults_gen` (written since D2) and `options_global` (D3), plus `region_default` and `last_region` once D3
-merges them: **38 of 48**, 10 spare (`version` and `end` are not entries). `tools/tests/test_options_d1.py::test_the_cfg_holds_every_key_within_the_budget`
+merges them: **39 of 48**, 9 spare (`version` and `end` are not entries). `tools/tests/test_options_d1.py::test_the_cfg_holds_every_key_within_the_budget`
 writes a file with every key through the real registry and reads it back, and fails when fewer than six entries
 would be left.
 
@@ -2402,6 +2403,23 @@ on Nearest at once when the wanted scaler is a CPU one (FSR 1, Lanczos2) and the
 [P6.32](P6.32_MAP_ZOOM.md#d5-fsr-1-is-the-default-scaler-and-a-row-for-it). A bad word falls back to `fsr1` with
 `dw3-options: map_scaler=<v> is not valid; using default fsr1`. Lettering in the five languages
 (`EXTRA_ROWS['sc']`, `SCALER_VALUES`): the five values are algorithm names, the same in every language.
+
+## Output filter (registry 29)
+
+Registry row **29 Output filter**, the fourth row of Display (after Map scaler), key `output_filter`, a word:
+`nearest` (**default**: what the port always did), `bilinear`, `sharp` (Sharp bilinear: the picture is stretched
+with an integer nearest step and a short bilinear seam, crisp on a TV where the 4.5x stretch of plain Nearest
+makes the pixel columns alternate between 4 and 5 pixels). Left / Right and Confirm step Nearest, Bilinear,
+Sharp bilinear and wrap; the row is **not locked in game** and the next present uses it. It applies to the whole
+2D picture (field, menus, battle UI and the 3D of the battle, movies) on the Switch (GLES shaders) and on the
+PC (an integer prescale, then a linear blit); the native overlays (title menu, Options, full-screen map) are
+not filtered. `DW3_OUTPUT_FILTER=0|1|2` pins it for one run (a test aid; not written). A bad word falls back to
+`nearest` with `dw3-options: output_filter=<v> is not valid; using default nearest`. Logs:
+`dw3-present: output filter <name>` (first present and each change), `dw3-port-options: output filter <name>`,
+`dw3-options: file keys ... output_filter=<word>`. Lettering in the five languages (`EXTRA_ROWS['of']`; the
+three values are the Map scaler's product words) and a PT-BR draft (`opt_row_x_of`, `opt_desc_x_of`); help text
+in the Display list item of **Options explained** in the five languages and the PT-BR draft.
+Design, the measured cost, the shader math and the tests: [OUTPUT_FILTER](OUTPUT_FILTER.md).
 
 ## History moved from ROADMAP.md (2026-10-24)
 
