@@ -42,7 +42,7 @@ int main(void) {
         return fail("re-open");
     }
 
-    if (dw3_port_options_count() != 30) {
+    if (dw3_port_options_count() != 33) {
         return fail("option count");
     }
     if (dw3_port_options_level(DW3_PORT_OPT_BATTLE_MENU) != 0 ||
@@ -171,7 +171,7 @@ int main(void) {
      * every registry row is in exactly one group, a long list scrolls. */
     {
         int ids[DW3_OPTGRP_COUNT];
-        int seen[29] = {0};
+        int seen[32] = {0};
         int g, k;
 
         /* D1: Display, Sound, Gameplay, Menus, Controls, Saves, Cheats, Advanced,
@@ -195,7 +195,7 @@ int main(void) {
                 seen[dw3_optgroups[g].rows[k]]++;
             }
         }
-        for (k = 0; k < 29; k++) {
+        for (k = 0; k < 32; k++) {
             if (k == DW3_PORT_OPT_REGION) continue; /* combined image only */
             if (k == DW3_PORT_OPT_SWITCH_GLYPHS && !DW3_OPT_GLYPHS_ROW) continue; /* Switch only */
             if (seen[k] != 1) {
@@ -224,27 +224,40 @@ int main(void) {
     /* P6.32 phase 4: the Full-screen map row is the second row of the Display
      * group, off by default, a plain switch (Confirm toggles), not locked in game.
      * D1 adds Map mod pack and Version label after it (both default ON). */
-    if (dw3_optgroups[DW3_OPTGRP_DISPLAY].nrows != 6 ||
+    if (dw3_optgroups[DW3_OPTGRP_DISPLAY].nrows != 9 ||
         dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[0] != 0 /* Widescreen */ ||
-        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[1] != DW3_PORT_OPT_MAP_SCREEN ||
-        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[2] != DW3_PORT_OPT_MAP_SCALER ||
-        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[3] != DW3_PORT_OPT_OUTPUT_FILTER ||
-        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[4] != DW3_PORT_OPT_MAP_MOD ||
-        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[5] != DW3_PORT_OPT_SHOW_VERSION) {
-        return fail("Display group is Widescreen, Map screen, Map scaler, Output filter, Map mod pack, Version label");
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[1] != DW3_PORT_OPT_INTERNAL_RES ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[2] != DW3_PORT_OPT_INTERNAL_RES_TURBO ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[3] != DW3_PORT_OPT_MAP_SCREEN ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[4] != DW3_PORT_OPT_MAP_SCALER ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[5] != DW3_PORT_OPT_OUTPUT_FILTER ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[6] != DW3_PORT_OPT_MAP_MOD ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[7] != DW3_PORT_OPT_SHOW_VERSION ||
+        dw3_optgroups[DW3_OPTGRP_DISPLAY].rows[8] != DW3_PORT_OPT_TEXT_LANGUAGE) {
+        return fail("Display group is Widescreen, Internal resolution, Native res while turbo, Map screen, Map scaler, Output filter, Map mod pack, Version label, Text language");
     }
-    /* Output filter: the fourth row of Display, Nearest by default (the look the port
-     * always had), a word key output_filter. */
-    if (dw3_port_options_level(DW3_PORT_OPT_OUTPUT_FILTER) != DW3_OUTFILTER_NEAREST ||
-        DW3_OUTFILTER_DEFAULT != DW3_OUTFILTER_NEAREST ||
-        strcmp(dw3_port_options_key(DW3_PORT_OPT_OUTPUT_FILTER), "output_filter") != 0) {
-        return fail("Output filter defaults to Nearest, key output_filter");
+    /* P6.11: Internal resolution is 1x by default (the original picture, the replays
+     * pin it), Native res while turbo is ON; neither is locked in game. */
+    if (dw3_port_options_level(DW3_PORT_OPT_INTERNAL_RES) != DW3_INTERNAL_RES_1X ||
+        strcmp(dw3_port_options_key(DW3_PORT_OPT_INTERNAL_RES), "internal_res") != 0 ||
+        dw3_port_options_level(DW3_PORT_OPT_INTERNAL_RES_TURBO) != 1 ||
+        strcmp(dw3_port_options_key(DW3_PORT_OPT_INTERNAL_RES_TURBO), "internal_res_turbo") != 0 ||
+        (dw3_port_options_locked_mask_for(1) &
+         ((UINT64_C(1) << DW3_PORT_OPT_INTERNAL_RES) | (UINT64_C(1) << DW3_PORT_OPT_INTERNAL_RES_TURBO))) != 0) {
+        return fail("Internal resolution 1x / Native res while turbo ON by default, keys, not locked in game");
     }
     /* D5: the Map scaler row is the third of Display, FSR 1 by default (owner
      * 2026-10-31), a stepped row of five values that is not locked in game. */
     if (dw3_port_options_level(DW3_PORT_OPT_MAP_SCALER) != DW3_MAPSCALER_FSR1 ||
         strcmp(dw3_port_options_key(DW3_PORT_OPT_MAP_SCALER), "map_scaler") != 0) {
         return fail("Map scaler defaults to FSR 1, key map_scaler");
+    }
+    /* Output filter: Nearest by default (the look the port always had), a word key
+     * output_filter, right after Map scaler in Display. */
+    if (dw3_port_options_level(DW3_PORT_OPT_OUTPUT_FILTER) != DW3_OUTFILTER_NEAREST ||
+        DW3_OUTFILTER_DEFAULT != DW3_OUTFILTER_NEAREST ||
+        strcmp(dw3_port_options_key(DW3_PORT_OPT_OUTPUT_FILTER), "output_filter") != 0) {
+        return fail("Output filter defaults to Nearest, key output_filter");
     }
     /* D2: the layout defaults to Nintendo everywhere; Switch glyphs default to ON where
      * the row exists (the Switch, or a test that forces the row) and OFF on the PC, which
@@ -272,7 +285,39 @@ int main(void) {
         dw3_port_options_test_set_pressed(1u << BIT_DOWN);
         dw3_port_options_tick();
         if (dw3_port_options_cursor() != 1) {
-            return fail("Display ends on the Map screen row");
+            return fail("Display's second row is Internal resolution");
+        }
+        /* P6.11: Confirm steps 1x -> 2x -> 3x -> 1x; the row is a stepped one. */
+        dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+        dw3_port_options_tick();
+        if (dw3_port_options_level(DW3_PORT_OPT_INTERNAL_RES) != DW3_INTERNAL_RES_2X) {
+            return fail("Confirm steps Internal resolution to 2x");
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+        dw3_port_options_tick();
+        dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+        dw3_port_options_tick();
+        if (dw3_port_options_level(DW3_PORT_OPT_INTERNAL_RES) != DW3_INTERNAL_RES_1X) {
+            return fail("Internal resolution wraps 3x -> 1x");
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_DOWN);
+        dw3_port_options_tick();
+        if (dw3_port_options_cursor() != 2) {
+            return fail("Display's third row is Native res while turbo");
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_CROSS);
+        dw3_port_options_tick();
+        if (dw3_port_options_level(DW3_PORT_OPT_INTERNAL_RES_TURBO) != 0) {
+            return fail("Confirm turns Native res while turbo off");
+        }
+        dw3_port_options_tick();
+        if (dw3_port_options_level(DW3_PORT_OPT_INTERNAL_RES_TURBO) != 1) {
+            return fail("Confirm turns Native res while turbo back on");
+        }
+        dw3_port_options_test_set_pressed(1u << BIT_DOWN);
+        dw3_port_options_tick();
+        if (dw3_port_options_cursor() != 3) {
+            return fail("Display's fourth row is the Map screen row");
         }
         dw3_port_options_test_set_pressed(1u << BIT_CROSS);
         dw3_port_options_tick();

@@ -4,7 +4,7 @@ How the 2D picture is stretched from the PS1 pixels to the screen. Added 2026-11
 recommended by [P6.11 section 10.6](P6.11_INTERNAL_RES.md#106-recommendation) (point 4): docked, a
 320x240 picture is stretched 4.5x to 1080p, so with nearest sampling a PS1 pixel is 4 or 5 output
 pixels wide in turn, which is the roughness the owner sees on a TV. Rule 8 (AGENTS.md): it is a
-Display row, registry 29, key `output_filter`. No decomp patch, no game-logic change, no replay
+Display row, registry 32, key `output_filter`. No decomp patch, no game-logic change, no replay
 impact of its own (the PS1 frame is the same; only the window grab changes, and only when the filter
 is on).
 

@@ -886,25 +886,50 @@ def options_menus(version, phase):
 
 
 def options_display(version, phase):
-    """D1 + D5 + Output filter: Display has six rows. Phase 1: Down x2 to Map scaler and
-    Left (FSR 1 -> Lanczos2, `scaler-changed`), Down to Output filter and Right x2 (Nearest
-    -> Bilinear -> Sharp bilinear, `filter-changed`), Down to Map mod pack and Confirm (OFF),
-    Down to Version label and Confirm (OFF) (`display-off`); phase 2 reads them back from the
-    file (`display-restored`)."""
+    """D1 + D5 + P6.11: Display has nine rows (Widescreen, Internal resolution, Native res
+    while turbo, Map screen, Map scaler, Output filter, Map mod pack, Version label, Text language). Phase 1: Down x4 to Map
+    scaler and Left (FSR 1 -> Lanczos2, `scaler-changed`), Down to Output filter and Right x2 (Nearest ->
+    Bilinear -> Sharp bilinear, `filter-changed`), Down to Map mod pack and Confirm
+    (OFF), Down to Version label and Confirm (OFF) (`display-off`); phase 2 reads them back
+    from the file (`display-restored`)."""
     r = Rec(f"{version.upper()}: D1 / D5 Display rows Map scaler, Output filter, Map mod pack and Version label, phase {phase}")
     m = _to_options(r, version)
     f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)
     if phase == 1:
         r.shot(f + 20, "display-rows")
-        f = _keys(r, f + 40, DOWN, DOWN, LEFT)
+        f = _keys(r, f + 40, DOWN, DOWN, DOWN, DOWN, LEFT)
         r.shot(f + 40, "scaler-changed")
         f = _keys(r, f + 60, DOWN, RIGHT, RIGHT)
         r.shot(f + 40, "filter-changed")
         f = _keys(r, f + 60, DOWN, CROSS, DOWN, CROSS)
         r.shot(f + 40, "display-off")
     else:
-        f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN, DOWN)
+        f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN, DOWN, DOWN, DOWN)
         r.shot(f + 40, "display-restored")
+    f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+    r.end(f + 40)
+    return r
+
+
+def l10n_row(version, with_pack):
+    """P6.7 phase 2: Options > Display, Down x8 to Text language (the ninth and last row; P6.11 put two rows before the map ones, the Output filter one after the Map scaler). With a pack:
+    `row-original` (Original), Right (Portugues (BR), `row-ptbr`), Left (`row-back`). With no
+    pack: `row-greyed` (Original greyed, the message line says why) and Right, which is
+    refused (`row-refused`)."""
+    r = Rec(f"{version.upper()}: P6.7 Display > Text language, {'pack installed' if with_pack else 'no pack'}")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)
+    f = _keys(r, f + 20, *([DOWN] * 8))
+    if with_pack:
+        r.shot(f + 40, "row-original")
+        f = _keys(r, f + 60, RIGHT)
+        r.shot(f + 40, "row-ptbr")
+        f = _keys(r, f + 60, LEFT)
+        r.shot(f + 40, "row-back")
+    else:
+        r.shot(f + 40, "row-greyed")
+        f = _keys(r, f + 60, RIGHT)
+        r.shot(f + 40, "row-refused")
     f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
     r.end(f + 40)
     return r
@@ -2647,12 +2672,12 @@ def field_map_off(version):
 
 def map_rebind_relaunch_p1(version):
     """P6.32 phase 4, process 1 of the relaunch test: the title's Options, the Display
-    group, its second row (Full-screen map) from OFF to ON; the file the screen writes
+    group, its fourth row (Full-screen map; P6.11 put two rows before it) from OFF to ON; the file the screen writes
     keeps the binding keys the manifest seeded. Back out."""
     r = Rec(f"{version.upper()}: P6.32 phase 4 Full-screen map row, phase 1")
     m = _to_options(r, version)
     f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)    # Display
-    f = _keys(r, f + 20, DOWN)                         # Widescreen -> Full-screen map
+    f = _keys(r, f + 20, DOWN, DOWN, DOWN)             # Widescreen -> Internal resolution -> Native res -> Full-screen map
     r.shot(f + 20, "fm-off")
     r.press(f + 40, CROSS)                             # OFF -> ON
     r.shot(f + 80, "fm-on")
@@ -3804,6 +3829,79 @@ def field_options_cheats(version):
     return r
 
 
+# --- P6.11 internal resolution (docs/P6.11_INTERNAL_RES.md section 5) -----------------
+
+def res_switch(version):
+    """P6.11 phase 3: the two forced battles of `two_battles` with fast-forward toggled by
+    R3 inside the first one: on at frame 470 (the picture drops to 1x), off at 490 (back to
+    the chosen multiplier). The checkpoints are the ones of `two_battles`, so the capture
+    after the switch can be held against the steady run's (turbo changes the speed, never
+    the frame a picture belongs to). The manifest seeds Fast-forward 4x in the option file
+    and no DW3_TURBO, so R3 is what turns it on."""
+    door, tech2, end = TWO_BATTLES[version]
+    r = Rec(f"{version.upper()}: two forced battles, turbo toggled on and off by R3 in the first (env and cfg in manifest)")
+    _tech(r, 350)
+    r.press(470, R3)                 # turbo on: dw3-res: turbo on -> 1x
+    r.press(490, R3)                 # turbo off: dw3-res: turbo off -> Nx
+    r.shot(500, "battle1-tech")
+    for f in range(520, door - 20, 30):
+        r.press(f, CROSS)
+    r.shot(tech2 - 20, "battle2-menu")
+    _tech(r, tech2)
+    r.press(tech2 + 40, R3)          # on again inside the second battle
+    r.press(tech2 + 100, R3)         # and off
+    r.shot(tech2 + 130, "battle2-tech")
+    for f in range(tech2 + 150, end - 100, 30):
+        r.press(f, CROSS)
+    r.shot(end - 10, "field-after")
+    r.end(end)
+    return r
+
+
+RES_MOVIE_SHOT = 14000   # EU: the opening's second movie (MOVIED01) starts just after frame 13800
+RES_MOVIE_END = 14050    # and runs about 450 frames; the shot is 200 frames into it
+
+
+def res_movie(version):
+    """P6.11: the New Game opening cut inside its movie, one checkpoint there. The movie is
+    drawn from the RGB24 region and must be unscaled at 2x (the window grab shows it)."""
+    r = Rec(f"{version.upper()}: New Game opening, cut inside the movie")
+    new_game_opening(r, version)
+    r.lines = [l for l in r.lines
+               if not l.startswith(("shot", "end"))
+               and (l.startswith("#") or int(l.split()[1]) <= RES_MOVIE_END)]
+    r.shot(RES_MOVIE_SHOT, "opening-movie")
+    r.end(RES_MOVIE_END)
+    return r
+
+
+def options_res(version, phase):
+    """P6.11 phase 1: Options > Display > Internal resolution and Native res while turbo.
+    Phase 1: Down to Internal resolution, Cross 1x -> 2x (`res-2x`), Down to Native res while
+    turbo, Cross ON -> OFF (`res-turbo-off`). Phase 2 is a fresh process on the same config
+    folder: both come back from the file (`res-restored`, 2x and OFF), then Cross on the
+    first row steps 2x -> 3x (`res-3x`) and again 3x -> 1x (`res-1x`)."""
+    r = Rec(f"{version.upper()}: P6.11 Internal resolution rows, phase {phase}")
+    m = _to_options(r, version)
+    f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)
+    f = _keys(r, f + 20, DOWN)                         # Widescreen -> Internal resolution
+    if phase == 1:
+        r.press(f + 20, CROSS)                         # 1x -> 2x
+        r.shot(f + 60, "res-2x")
+        f = _keys(r, f + 80, DOWN, CROSS)              # Native res while turbo ON -> OFF
+        r.shot(f + 40, "res-turbo-off")
+    else:
+        r.shot(f + 40, "res-restored")
+        r.press(f + 60, CROSS)                         # 2x -> 3x
+        r.shot(f + 120, "res-3x")
+        r.press(f + 140, CROSS)                        # 3x -> 1x
+        r.shot(f + 200, "res-1x")
+        f = f + 200
+    f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
+    r.end(f + 40)
+    return r
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     (out / "us-title.rec").write_text(us_title().text())
@@ -3924,6 +4022,9 @@ def main(out):
                 options_menus(v, phase).text(True))
             (out / f"{v}-options-display-p{phase}.rec").write_text(
                 options_display(v, phase).text(True))
+        if v == "eu":  # the pack is EU-only until phase 5; both regions show the greyed row
+            (out / f"{v}-l10n-row.rec").write_text(l10n_row(v, True).text(True))
+        (out / f"{v}-l10n-row-nopack.rec").write_text(l10n_row(v, False).text(True))
         for phase in (1, 2):
             (out / f"{v}-defaults-migrate-p{phase}.rec").write_text(
                 defaults_migrate(v, phase).text(True))
@@ -3971,6 +4072,13 @@ def main(out):
             field_options_release(v).text(True))
         (out / f"{v}-battle-options-ref.rec").write_text(
             battle_options_ref(v).text(True))
+        (out / f"{v}-res-switch.rec").write_text(res_switch(v).text(True))
+        if v == "eu":
+            (out / f"{v}-res-movie.rec").write_text(res_movie(v).text(True))
+        if v == "eu":
+            for phase in (1, 2):
+                (out / f"{v}-options-res-p{phase}.rec").write_text(
+                    options_res(v, phase).text(True))
         (out / f"{v}-battle-options.rec").write_text(battle_options(v).text(True))
     for i, lang in enumerate(EU_LANGS):
         if lang != "en":

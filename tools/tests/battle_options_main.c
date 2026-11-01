@@ -42,7 +42,7 @@ void dw3_pc_title_menu_set_state(int active, int selected) {
     g_state_calls++;
 }
 void dw3_pc_title_overlay_set_options_language(int lang) { (void)lang; }
-void dw3_pc_title_overlay_set_options_locked(unsigned mask) { (void)mask; }
+void dw3_pc_title_overlay_set_options_locked(uint64_t mask) { (void)mask; }
 int dw3_test_select_pressed(void) { return g_select; }
 int dw3_test_shoulder_held(void) { return g_shoulder; }
 

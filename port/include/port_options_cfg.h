@@ -27,7 +27,7 @@ extern "C" {
 
 #define DW3_OPTCFG_FILE "port_options.cfg"
 #define DW3_OPTCFG_VERSION 1
-#define DW3_OPTCFG_MAX_ENTRIES 48
+#define DW3_OPTCFG_MAX_ENTRIES 64 /* raised from 48 with the Output filter row: 43 keys were in use, the budget test wants 6 spare */
 #define DW3_OPTCFG_KEY_MAX 32
 #define DW3_OPTCFG_VAL_MAX 48
 /* Larger files are not ours (or are damaged): ignored, not parsed. */

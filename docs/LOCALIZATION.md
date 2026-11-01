@@ -1,7 +1,8 @@
 # Localization (P6.6, P6.7 and P6.8): PT-BR first
 
-Status: **design and extraction tooling, written 2026-11-01** (phase 0, this PR). No
-behaviour change in the game or in the Options yet. Owner decision, 2026-11-01:
+Status: **phases 0 to 2 built, 2026-11-01** (phase 0 #415; phases 1 and 2 in the PR that adds sections 7a and 9's
+"As built"). The loader, the pack builder and the `Text language` row exist and are proven on the EU PC with synthetic
+packs (no translation yet); the Switch combined image builds with them. Owner decision, 2026-11-01:
 **translation is the priority: Brazilian Portuguese for the game and for the port's
 own screens.** Roadmap: [P6.6](ROADMAP.md) (this note), [P6.7](ROADMAP.md) (the
 PT-BR pack), [P6.8](ROADMAP.md) (more locales, the same mechanism).
@@ -192,6 +193,26 @@ water with `tools/memaudit`. The original files share equal strings and pad
 differently, so a rebuilt file is not byte-identical to the original (29 of 50 are
 not); this does not matter, because the pack builder checks by decoding.
 
+### 2.6a Strings the engine copies into fixed buffers
+
+A pack string may be any length **except these**, which the engine copies into a fixed buffer (found by reading
+the decomp for `strcpy`, `strncpy` and `convert` of a text string; the first synthetic pack crashed on the first
+one with `*** stack smashing detected ***`). `extract_text.py --check` and `build_pack.py` enforce them
+(`BUFFER_LIMITS`, `buffer_problem`); the synthetic transforms keep the English where they would overflow.
+
+| String | Where it goes | Limit |
+|---|---|---|
+| `MEMCRD:39` (the save file's title, shown in the memory card browser) | converted to 2-byte Shift-JIS into `char title[0x48]` on the stack (`STGMCARD_loadFiles`) | **32 characters, no accent** (a letter without a Shift-JIS code is dropped, so an accented title loses it); English is 18, French 29 |
+| `NAMEDT:11` (the new game's default player name) | `GAME.name[0x18]` (`initNewGameData`) | 23 bytes (an accented letter is an icon: 2 bytes) |
+| `CRDSHP:22` to `24` (the three starter deck names) | `Deck.name[0x16]` | 21 bytes |
+| `DIGNAM:*` (every Digimon name) | `PartnerStats.name[0x18]` of the six partners | 23 bytes |
+| the speaker's name of a `TALK` / `DMG` string (before `{start}`) | `char name[0x20]` in `createTalkBox` | 31 bytes |
+
+Everything else reaches the screen through a text window, which **copies** the string (`setTextBuffer`:
+`HEAP.alloc` and `memcpy`), so a longer string only needs the window's own limits (section 2.4). The engine
+also keeps table pointers in a speech task and a talk box, which is why the port does not free a cached text
+file in game (section 3.6).
+
 ### 2.7 Hard-coded strings and text that is a picture
 
 * **In code:** almost none. The decomp's string literals are asset names, the save file
@@ -291,6 +312,17 @@ runtime/eu/l10n/ptbr/
 4. Anything wrong (no pack, hash mismatch, short file) leaves the arrays untouched:
    **English, with one log line**. The game never fails because of a pack.
 
+**As built (phase 1): the spike's answer.** On the host the engine reads a text file **by id**: patch 0009 makes
+`CD_READER.read(file, ...)` call `cdfs_read(file, ...)`, and `FILE_CACHE` sizes the block from
+`FILE_SECTOR_COUNTS[file]`. No sector number is read for these files, so a virtual LBA is only a label. The pack is
+therefore an **id-level override in `port/cdfs`** (`cdfs_override_set(id, "l10n/ptbr/<id>.bin")`) plus the two
+arrays: `FILE_SECTOR_COUNTS[id]` becomes the pack file's sectors (so a longer file gets a bigger block) and
+`FILE_SECTORS[id]` a virtual LBA above any disc (`0x1000000` and up, `dw3-l10n: override ... lba=`), both
+restored exactly by `dw3_l10n_core_restore`. No engine patch (0201 stays free). The code is `port/l10n/l10n_core.c`
+(pure: pack.json reader, sha256, checks, apply and restore, tested on synthetic packs by
+`tools/tests/l10n_main.c`) and `port/l10n/l10n.c` (bound to the game's arrays and `FILE_CACHE`).
+The one thing it cannot do is free a cached file in game (section 3.6).
+
 The US build uses the same loader, with ids from `files_us.json` (no `LANGUAGE` offset).
 How the engine's sector reads reach a virtual LBA (the PSY-Z `libcd` backend maps a
 sector number to a cdfs entry) is the first thing the phase 1 spike proves; the fall-back
@@ -317,12 +349,15 @@ rendered locally), not a copy of the game's art, and they stay in the pack folde
 
 ### 3.6 Options row, selection and logs
 
-* A **new Options row**, "Language: Original / Português (BR)" (key `text_language`
+* A **new Options row**, "Text language: Original / Português (BR)" (key `text_language`
   in `port_options.cfg`, values `original|ptbr`, default `original`), with its label
   and message line in the five languages **and PT-BR** (AGENTS.md rule 8; not on the
-  exempt list). Recommended place: the first row of a one-row **Language** group at the
-  top of the group list (an eleventh group; owner to confirm, the alternative is the
-  first row of Display).
+  exempt list). **Built (phase 2) as the last row of Display**, registry row 29 (the orchestrator's
+  choice, owner to confirm; the alternative is a one-row group at the top of the list, and either is a
+  one-line change of `dw3_optgroups` in `port_options_groups.h`). The values are Original and Português (BR);
+  the five EU languages are not rows of it, because the country select still chooses `LANGUAGE`. With no usable
+  pack the value shows Original greyed and the message line says "No text pack found", Right is refused.
+  `DW3_LANG=ptbr` pins it for one run. Details: [PORT_OPTIONS](PORT_OPTIONS.md#text-language-p67).
 * **EU and the combined image** (US+EU build, `docs/SINGLE_BUILD.md`): the row is on
   both regions, the same cfg key (one global `port_options.cfg`, P6.26). A region with
   no installed pack shows the row greyed with the reason ("pack not found") and the
@@ -331,7 +366,13 @@ rendered locally), not a copy of the game's art, and they stay in the pack folde
   the only extra work is the atlas (3.5). Until then the US row shows "needs the EU
   font" greyed.
 * Switching applies at the next text load; the Options screen itself changes
-  language at once (section 7), since it does not use the game's text.
+  language at once (section 7), since it does not use the game's text. **At the title** the loader drops the
+  cached text files, so the next screen reads the new text. **In game it does not**: a text window copies its string
+  (`setTextBuffer`), but a speech task keeps the loaded table (`task->text` in `speech.c`) and a talk box its
+  `strings` while it lives, and the port has not audited every other holder, so freeing a cached file under them
+  could be a use after free; the cached files keep their language until the engine loads them again (a new area for the dialogue, a screen reopening for its menu).
+  A mid-game switch is therefore gradual. A hook at the area change (a decomp patch, 0201) could drop them at a
+  safe point; it is not built.
 * **Logs** (once per event, never per frame; AGENTS rule 12):
 
 ```
@@ -340,7 +381,9 @@ dw3-l10n: pack ok region=eu files=50 strings=13084 translated=N fallback=M src=s
 dw3-l10n: override id=108 stem=ITMNAM bytes=7810 lba=0x100006e sectors=4   (first 8, then a count)
 dw3-l10n: fallback key=TALK03:0412 (empty pt)                              (first 32, then a count)
 dw3-l10n: off reason=no_pack | hash_mismatch | short_file | option_original
-dw3-l10n: heap high water text=NNNN
+dw3-l10n: heap high water text=NNNN (the same files in English MMMM, +K bytes; cached at exit ...)
+dw3-l10n: pack checked in N ms                                             (boot, the sha256 of the 50 source files)
+dw3-l10n: glyph proof n=29                                                 (a pack built with --synthetic proof)
 ```
 
 ### 3.7 Tests
@@ -479,8 +522,8 @@ Efforts are worker-days (one agent, with the build and replay time included).
 | Phase | Work | Effort | Done when |
 |---|---|---|---|
 | **0** (this PR) | Design note, `extract_text.py` + `textfmt.py` + tests, `pt` drafts of Help, Walkthrough and Options lettering, `--check-pt` / `--with-pt` generators | done | the PR merges; the owner reviews the PT drafts |
-| **1** Pack and loader (EU, PC) | `build_pack.py` (+ synthetic tests), `port/l10n/` loader (virtual LBA entries, `FILE_SECTORS` / `COUNTS` patch and restore, hash check, logs), `text_language` cfg key (no UI yet, `DW3_LANG=ptbr` for tests), synthetic-pack replays on EU, heap high-water | 4 | a synthetic upper-cased pack shows in the title, field dialogue, battle menu and Digimon lab on EU PC, and removing the pack gives English with one log line |
-| **2** Options row, glyph proof, boxes | the Language row (5 languages + PT) in the registry and the lettering, the on-screen accent proof (all 26 letters, `¡ ¿ °`), a measuring pass of every window (message box, talk box types, battle menu, field menu, shop, card game) with the longest PT-like strings, `DW3_L10N_SHOW_KEYS=1`; Switch build and a first OLED run | 3 | OLED L1 to L7 pass with the synthetic pack on EU |
+| **1** Pack and loader (EU, PC), **built 2026-11-01** | `build_pack.py` (+ synthetic tests), `port/l10n/` loader (virtual LBA entries, `FILE_SECTORS` / `COUNTS` patch and restore, hash check, logs), `text_language` cfg key (no UI yet, `DW3_LANG=ptbr` for tests), synthetic-pack replays on EU, heap high-water | 4 | a synthetic upper-cased pack shows in the title, field dialogue, battle menu and Digimon lab on EU PC, and removing the pack gives English with one log line |
+| **2** Options row, glyph proof, boxes, **built 2026-11-01** (the OLED run is the owner's: TL1 to TL8) | the Language row (5 languages + PT) in the registry and the lettering, the on-screen accent proof (all 26 letters, `¡ ¿ °`), a measuring pass of every window (message box, talk box types, battle menu, field menu, shop, card game) with the longest PT-like strings, `DW3_L10N_SHOW_KEYS=1`; Switch build and a first OLED run | 3 | OLED L1 to L7 pass with the synthetic pack on EU |
 | **3** Port screens PT | `pt` index 5 in the Options lettering table and the Help / Walkthrough embeds (generators with `--with-pt` on by default), the language follows the Language row, title Options plaque and Quit in PT, replays of the Options / Help / Walkthrough in PT on EU and US | 3 | OLED L9 and L10; the owner signs off the PT drafts |
 | **4** Translation, first pass | Owner + local AI: names, menus, descriptions (2,469 strings), then `TALK00..09` and `DMG` by chapter (the 90%); check and pack after each batch; PT title labels and bar labels drawn with our lettering | owner/AI time, not worker time: about 3 days of AI drafting and 25 to 40 h of owner review for 67k words | a short playthrough title to field dialogue in PT-BR (the P6.7 done-when) |
 | **5** US | The owner-built atlas (3.5), the US template filled by `--propagate`, the 72 differing US strings, US replays, the combined-image row | 4 | the same playthrough on a US disc |
@@ -492,16 +535,46 @@ the EU maximum of 261 px (phase 2 measures them), grammar around work buffers.
 Open owner questions: where the Language row goes (3.6), the keyboard accents
 (2.7), and whether the title labels use the port's lettering or stay English.
 
+## 7a. The measuring pass
+
+`eu-l10n-fit-*` (tier `repro`, `tools/replay_tests.sh --only eu-l10n-fit-dialogue ...`) replays fifteen existing
+window scenarios with a **stress pack** (`build_pack.py --synthetic stress`): every line is padded with wide accented
+letters to the widest line the other four EU languages have at that index (`limit_px`), the longest a translator was
+allowed. Run 2026-11-01 on the EU PC build, 236 checks, no crash, no hang, every window drawn.
+
+| Window (scenario) | Result |
+|---|---|
+| battle command menu, Items and technique lists, descriptions (`battle-menu`), battle report (`battle-results`) | fit; the six command buttons take `Fight ãõç` |
+| field menu words, Items menu (pages, equip bar, `Items ãõ 3`), Status, Techniques, Sort, Map, the Digimon pickers (`menu-screens`, `items-menu`) | fit |
+| Digimon Lab (menu, party, details, digivolve), gym, item shop, card shop, deck editor, card album, save and load screens | fit |
+| message box and talk boxes of the opening (`dialogue`) | fit; only a few lines of the opening are on a checkpoint |
+
+What this does and does not prove: the stress lines are as wide as the widest of **the other four EU languages** at the
+same index (261 px at most), so the pass shows that no window it visited is narrower than what the existing
+translations already needed. It does not test a window nobody drove (the inn, training in every state, the
+whole card game) and it measures widths, not words: a real translation is still checked line by line with
+`extract_text.py --check --max-width`. **Heap:** the stress pack is the worst case, 492 sectors against 338 for the
+English (+46%, the biggest file `TALK06` 78,704 bytes against 48,190) and the cache held at most 239,616 bytes of
+replaced text files at once (English 161,792 for the same files, +77,824) against the 8 MiB host heap; a pack
+upper-cased with accents is +1.2% (342 sectors). The logged peak is `dw3-l10n: heap high water text=` (at exit,
+the English size of the same files beside it); the P5.1 sampler (`DW3_MEM_LOG`) reports the whole heap.
+
+Two findings of the pass are in section 2.6a: the card file title buffer and the name buffers.
+
+
 ## 8. OLED rows (owner checklist, from phase 2)
 
 Every row names the `dw3.log` line that proves it (AGENTS rule 12). Rows L1 to L8 use
-the synthetic pack, so they need no translation.
+the synthetic pack, so they need no translation. In [OLED_TEST_PLAN](OLED_TEST_PLAN.md) (session R) they are
+**TL1 to TL8** (the plan already uses L1 to L29 for the button layout), with the build commands and the
+photos to take; the table below is the design. The `dw3-l10n: ...` line formats are as built (the
+`heap high water` line also gives the English size of the same files).
 
 | # | Steps | Expected | Proof in `dw3.log` |
 |---|---|---|---|
 | L1 | EU build, no pack installed. Options, Language | The row exists, shows Original, and the PT value is greyed ("pack not found") | `dw3-l10n: off reason=no_pack` |
 | L2 | Install the synthetic pack on the SD card, restart | The row can be set to Português (BR) | `dw3-l10n: pack ok region=eu files=50 ... fallback=` and `option text_language=ptbr` |
-| L3 | The accent proof screen | All 26 accents, `¡ ¿ °` visible and legible handheld and docked (`Ã Õ Ê Ô` top rows not clipped) | `dw3-l10n: glyph proof n=29` |
+| L3 | The accent proof screen: a pack built with `--synthetic proof`, Title > Load Game (the "Choose MEMORY CARD slot" and "File cannot be found" windows) | All 26 accents, `¡ ¿ °` visible and legible handheld and docked (`Ã Õ Ê Ô` top rows not clipped) | `dw3-l10n: glyph proof n=29` |
 | L4 | New game, name entry, the first field dialogue | PT text in the box, no letter clipped, 3 lines per page | `dw3-l10n: override id=...` lines, no `fallback` for the visited file |
 | L5 | Field menu: Items, Techniques, Status, Map | PT names and descriptions fit their windows | `dw3-l10n: override` for ITMNAM, SKLNAM, STATUS |
 | L6 | A battle: command menu, a technique, the damage text, the report | Everything fits, no overlap | `dw3-l10n: heap high water` |
@@ -514,6 +587,13 @@ the synthetic pack, so they need no translation.
 | L13 | US build (phase 5): L2, L4, L5 | Same as EU | same, `region=us` |
 
 ## 9. As built
+
+Phases 1 and 2 (2026-11-01): `tools/l10n/build_pack.py` (+ `--synthetic upper|partial|stress|proof`, `--keys`,
+`--verify`), `port/l10n/` (`l10n_core.c`, `l10n.c`, `sha256.c`), `port/cdfs` `cdfs_override_*`, `port_l10n.h`,
+registry row 29 `text_language`, the Display row and its lettering, `DW3_LANG`, `DW3_L10N_SHOW_KEYS`, the
+buffer limits of section 2.6a in `extract_text.py --check`, the `Scenario.l10n` replay field and the `eu-l10n-*` scenarios,
+tests `test_l10n_pack.py`, `test_l10n_loader.py` (`tools/tests/l10n_main.c`), the OLED session R. No decomp patch
+(0201 is still free). The PT-BR drafts of the port's screens are unchanged (phase 3 wires them).
 
 Phase 0 (2026-11-01): `tools/l10n/extract_text.py`, `tools/l10n/textfmt.py`,
 `tools/tests/test_l10n_extract.py` (synthetic data), the note you are reading, and the

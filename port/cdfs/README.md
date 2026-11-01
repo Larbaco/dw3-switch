@@ -25,6 +25,14 @@ frees the buffer. `cdfs_poll` is a no-op. Map headers and `FILE_CACHE`
 stay on `cdfs_read_at`. Preview.7 held one tile per frame until
 `cdfs_poll`; that hold is gone.
 
+## Overrides (P6.7)
+
+`cdfs_override_set(id, "l10n/ptbr/108.bin")` makes `cdfs_file_size`, `cdfs_read`, `cdfs_read_at` and
+`cdfs_read_field_tile` open that file (a path under the root, at most 47 bytes) instead of the map's, until
+`cdfs_override_clear(id)`. The map's LBA and sector fields are kept; `cdfs_lookup_lba` still answers with the disc
+layout. The text pack loader (`port/l10n/`) is the only user: on the host the engine reads a text file by id (patch
+0009), so this and the two file-table arrays are all a pack needs. See [LOCALIZATION](../../docs/LOCALIZATION.md).
+
 ## Out of scope
 
 - PSY-Z `libcd` / `St*` **STR movie streaming** (keep that on the sector

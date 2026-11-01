@@ -57,6 +57,46 @@ CATEGORY = {
 CATEGORIES = ("names", "descriptions", "menus", "dialogue_talk", "dialogue_event", "other")
 
 
+# Strings the engine copies into a fixed buffer (docs/LOCALIZATION.md section 2.6a). A longer one
+# overwrites what follows: the card title crashed the first synthetic pack (stack smashing).
+# stem, first index, last index (None = every string), limit in bytes of the game's encoding
+# (an accented letter is an icon, 2 bytes), what the buffer is.
+BUFFER_LIMITS = (
+    ("NAMEDT", 11, 11, 23, "the new game's player name, GAME.name[0x18] (initNewGameData)"),
+    ("CRDSHP", 22, 24, 21, "a starter deck's name, Deck.name[0x16] (initNewGameData)"),
+    ("DIGNAM", 0, None, 23, "a partner's name, PartnerStats.name[0x18] (initNewGameData)"),
+)
+CARD_TITLE = ("MEMCRD", 39, 32)  # the save file's title: converted to 2-byte Shift-JIS into char title[0x48]
+SPEAKER_MAX = 31                  # a talk box's speaker name, between 02 07 codes: char name[0x20]
+
+
+def buffer_problem(key: str, text: str, codec: T.Codec) -> str | None:
+    """Why `text` (the editable text of string `key`, "STEM:index" or "STEM:table:index") would overflow a
+    fixed buffer of the engine, or None."""
+    parts = key.split(":")
+    stem = parts[0]
+    try:
+        index = int(parts[-1])
+        raw = T.encode(text, codec)
+    except (ValueError, T.EncodeError):
+        return None
+    if len(parts) == 2 and stem == CARD_TITLE[0] and index == CARD_TITLE[1]:
+        chars = len(re.sub(r"\{[^}]*\}", "", text).replace("\n", ""))
+        if chars > CARD_TITLE[2]:
+            return f"{chars} characters, the save file's title buffer holds {CARD_TITLE[2]} (STGMCARD_loadFiles)"
+        if any(ord(c) > 127 for c in text):
+            return "an accented letter has no Shift-JIS code: it is dropped from the save file's title"
+    if len(parts) == 2:
+        for st, lo, hi, limit, what in BUFFER_LIMITS:
+            if stem == st and lo <= index and (hi is None or index <= hi) and len(raw) > limit:
+                return f"{len(raw)} bytes, {what} holds {limit}"
+    if stem.startswith(("TALK", "DMG")) and "{start}" in text:
+        speaker = T.encode(text.split("{start}", 1)[0], codec)
+        if len(speaker) > SPEAKER_MAX:
+            return f"the speaker's name is {len(speaker)} bytes, the talk box's buffer holds {SPEAKER_MAX}"
+    return None
+
+
 def category_of(stem: str) -> str:
     for cat, stems in CATEGORY.items():
         if stem in stems:
@@ -277,6 +317,9 @@ def check_file(path: Path, rep: Report, *, metrics: dict[int, T.Metrics] | None,
         except T.EncodeError as ex:
             rep.error(w, f"{ex} (at {ex.pos}): {pt[max(0, ex.pos - 8):ex.pos + 8]!r}")
             continue
+        bad = buffer_problem(key, pt, codec)
+        if bad:
+            rep.error(w, f"fixed buffer: {bad}")
         # placeholders and control codes must match the English (new lines may move)
         if Counter(T.tokens(en)) != Counter(T.tokens(pt)):
             rep.error(w, f"control codes differ: en {T.tokens(en)} vs pt {T.tokens(pt)}")

@@ -242,7 +242,7 @@ under. A file with no such key counts as 1, the generation before D2; this build
 and migrates a file below 2 once at load (below). `map_scaler` (D5) is the second **word** key,
 `nearest`, `sharp`, `lanczos2`, `fsr1` or `bilinear` (default `fsr1`): the **Map scaler** row of Display
 ([below](#defaults-generation-and-the-map-scaler-d2--d5)). `output_filter` is the third word key, `nearest`, `bilinear`
-or `sharp` (default `nearest`): the **Output filter** row of Display ([below](#output-filter-registry-29)).
+or `sharp` (default `nearest`): the **Output filter** row of Display ([below](#output-filter-registry-32)).
 
 `items_partner_switch` (P6.33, 0 or 1, default 1) is the **Partner switch** row of the Menus group (D1):
 read by `dw3_port_items_partner_switch_enabled`, saved with every other row. A missing
@@ -448,7 +448,7 @@ whichever region boots. Its progress file stays per region (the stage lists diff
 `<folder>/stage_sweep_us.txt`, `stage_sweep_eu.txt`; every `dw3-sweep:` line ends with
 `region=us|eu`.
 
-**Budget.** The file holds at most 48 entries and 4096 bytes. The test
+**Budget.** The file holds at most 64 entries (48 until the Output filter row) and 4096 bytes. The test
 `test_the_cfg_holds_every_key_within_the_budget` (`tools/tests/test_options_d1.py`) writes every key
 the port keeps, including `options_global`, `region_default` and `last_region`, and reads them back;
 a merge that would not fit is refused (`too many keys`) and keeps the old files.
@@ -2263,7 +2263,7 @@ overlay's page codes did not change, so the order table is the only thing that m
 
 | # | Group | Rows (registry index) | Rows on screen: PC US plain / Switch combined |
 |---|---|---|---|
-| 1 | Display | Widescreen (0), Full-screen map (15), **Map scaler (28, D5)**, **Output filter (29)**, Map mod pack (22), Version label (21) | 6 / 6 |
+| 1 | Display | Widescreen (0), **Internal resolution (30, P6.11)**, **Native res while turbo (31, P6.11)**, Full-screen map (15), Map scaler (28, D5), **Output filter (32)**, Map mod pack (22), Version label (21), Text language (29, P6.7) | 9 (the list scrolls) |
 | 2 | Sound | Music volume (3), SFX volume (4), Turbo music (13) | 3 / 3 |
 | 3 | Gameplay | Fast-forward (1), Encounter rate (5), Text speed (6), Battle cursor (7) | 4 / 4 |
 | 4 | Menus | Equip from Items (16), Equip stays on list (17), Whole bag (18), Use item stays (19), Partner switch (20), Instant menu exit (27) | 6 / 6 |
@@ -2294,8 +2294,8 @@ except the sub-screens that scroll (Cheats, Customize, Map buttons). The cfg tab
 | Shared saves (exp.) | **title only** (greyed in game: the cards are opened before it is read) | next start; Yes / No window when turned on |
 | Stage sweep, Frames per stage | **title only** (greyed in game), builds with the Cheats feature | next start; Yes / No window for Run and Start over |
 
-The lock mask of the overlay (`dw3_port_options_locked_mask`) is now 30 bits wide (registry rows 0 to 29, Output filter; 27 is Instant menu exit, patch 0200, 28 the Map scaler); the
-Cheats entry's bit moved from 16 to 30 (`DW3_PORT_OPTIONS_LOCK_CHEATS`, `DW3_TITLE_LOCK_CHEATS`).
+The lock mask of the overlay (`dw3_port_options_locked_mask`) is 64 bits wide since P6.11 (registry rows 0 to 61, the Cheats entry is bit 62; 27 is Instant menu exit, patch 0200, 28 the Map scaler, 32 the Output filter); the
+Cheats entry's bit moved from 16 to 30 in D1 and to 62 in P6.11 (`DW3_PORT_OPTIONS_LOCK_CHEATS`, `DW3_TITLE_LOCK_CHEATS`).
 
 ### Map buttons (Controls > Map buttons)
 
@@ -2336,10 +2336,10 @@ Map view pages name the new places (Options > Controls > Restart hotkey, Options
 
 ### Key budget
 
-The cfg holds at most 48 entries and 4096 bytes. With every key in one file the port keeps 24 registry keys
-(D5 added `map_scaler`, the Output filter `output_filter`), `button_map`, the 7 `map_view_*` keys, `cheat_enabled`, `cheat_instant_win` and the two
+The cfg holds at most 64 entries (raised from 48 with the Output filter row) and 4096 bytes. With every key in one file the port keeps 24 registry keys
+(D5 added `map_scaler`, P6.7 `text_language`, P6.11 `internal_res` and `internal_res_turbo`, the Output filter `output_filter`), `button_map`, the 7 `map_view_*` keys, `cheat_enabled`, `cheat_instant_win` and the two
 markers `defaults_gen` (written since D2) and `options_global` (D3), plus `region_default` and `last_region` once D3
-merges them: **39 of 48**, 9 spare (`version` and `end` are not entries). `tools/tests/test_options_d1.py::test_the_cfg_holds_every_key_within_the_budget`
+merges them: **43 of 64**, 21 spare (`version` and `end` are not entries). `tools/tests/test_options_d1.py::test_the_cfg_holds_every_key_within_the_budget`
 writes a file with every key through the real registry and reads it back, and fails when fewer than six entries
 would be left.
 
@@ -2404,9 +2404,43 @@ on Nearest at once when the wanted scaler is a CPU one (FSR 1, Lanczos2) and the
 `dw3-options: map_scaler=<v> is not valid; using default fsr1`. Lettering in the five languages
 (`EXTRA_ROWS['sc']`, `SCALER_VALUES`): the five values are algorithm names, the same in every language.
 
-## Output filter (registry 29)
+## Text language (P6.7)
 
-Registry row **29 Output filter**, the fourth row of Display (after Map scaler), key `output_filter`, a word:
+Registry row **29**, the sixth and last row of Display (a one-line move in `dw3_optgroups` of
+`port_options_groups.h`, the owner's choice pending), key `text_language`, a **word**: `original` (default) or
+`ptbr`. Left / Right and Confirm step Original and Português (BR). It picks the language of the **game's text**:
+Original is the disc's own text, Português (BR) reads a **local text pack** built on the owner's PC
+(`tools/l10n/build_pack.py`, `<runtime>/l10n/ptbr/`, [LOCALIZATION](LOCALIZATION.md)) and never shipped. The EU
+country select is unchanged: the pack overlays the English slot, so the title banks, the sprites and the movies
+that follow `LANGUAGE` keep working. (The row's label and message lines are in the five languages; the values are
+Original and Português (BR), not one per EU language.)
+
+- **No usable pack** (none installed, built from another disc dump, a file short or the wrong region): the
+  value reads **Original, greyed**, the message line says "No text pack found: the game text stays original.",
+  and Right is refused with `dw3-port-options: text language ptbr refused: no usable text pack (<reason>)`.
+  A file that says `ptbr` while the pack is missing keeps its word (the row is pinned for the run, like a `DW3_*`
+  pin) and plays English; the next change of the row writes the user's new choice.
+- **Applying**: the loader repoints the 50 text file ids (`port/l10n/`), logs `dw3-l10n: option
+  text_language=ptbr region=eu`, `override id=...`. At the **title** the cached text files are dropped, so the next
+  load reads the new text. **In game** the files already in the cache keep their language until the game loads them
+  again (a speech task or a talk box may hold the table, so the port does not free it): dialogue and menus refresh as areas and
+  screens load. Saves are unaffected, except that a partner's name is copied into the save when a new game starts
+  (`initNewGameData`), in the language of that moment.
+- **`DW3_LANG=ptbr|original`** pins it for one run (never written); **`DW3_L10N_SHOW_KEYS=1`** reads the pack's key
+  variants (`build_pack.py --keys`): every string starts with `(KEY) `, to find a line seen in the game.
+- A bad word falls back to `original` with `dw3-options: text_language=<v> is not valid; using default original`.
+  Lettering: `EXTRA_ROWS['tl']`, `TEXTLANG_NOPACK`, `TEXTLANG_ORIGINAL`, `TEXTLANG_PT` in
+  `tools/generate_pc_title_lettering.py`; PT-BR drafts in `tools/l10n/ptbr_options.py`.
+- Registry rows now run 0 to 29: the lock mask has room for **no further row** (bit 30 is the Cheats entry, bit 31 the
+  overlay's in-game mark). (Widened to 64 bits by P6.11: rows 0..61, Cheats bit 62, in-game mark bit 63.)
+
+Tests: `tools/tests/test_l10n_loader.py` (the loader on synthetic packs), `test_l10n_pack.py` (the builder),
+`test_options_persist.py` (the key order), replays `eu-l10n-*`
+([P6.15](P6.15_REPLAY_TESTS.md)).
+
+## Output filter (registry 32)
+
+Registry row **32 Output filter**, the sixth row of Display (right after Map scaler), key `output_filter`, a word:
 `nearest` (**default**: what the port always did), `bilinear`, `sharp` (Sharp bilinear: the picture is stretched
 with an integer nearest step and a short bilinear seam, crisp on a TV where the 4.5x stretch of plain Nearest
 makes the pixel columns alternate between 4 and 5 pixels). Left / Right and Confirm step Nearest, Bilinear,
@@ -2562,3 +2596,39 @@ cheat may write a save file by itself.
   game's text archive in the overlay); P9.7 (Options in game).
 - *Defaults chosen without the owner (the owner can change them):* see
   [Cheats, page 2](#cheats-p620) and ROADMAP P6.20.
+
+
+## Internal resolution (P6.11)
+
+Registry rows 30 and 31 (the next free ones after Text language, 29), the second and third rows of
+Display. Design, numbers and the build: [P6.11_INTERNAL_RES](P6.11_INTERNAL_RES.md).
+
+| Row | Key | Values | Default | Applies |
+|---|---|---|---|---|
+| **Internal resolution** (30) | `internal_res` (a number) | 0 = 1x, 1 = 2x, 2 = 3x | 0 (1x: the original picture, the replays pin it) | at once, also in game; the targets are allocated when the value changes |
+| **Native res while turbo** (31) | `internal_res_turbo` | 0 / 1 | 1 (ON) | at once |
+
+* **What scales.** The PC scales the whole picture through PSY-Z. The Switch scales the battle
+  3D (the mesh), the only thing it draws on the GPU; the field, the menus and the movies are CPU
+  sprites at 1x and would only get bigger blocks. The vertices are the PS1's integer
+  coordinates, so the wobble stays. The dither matrix is indexed by the fragment, so it is N times
+  finer at Nx (owner, 2026-11-01).
+* **Clamp.** `port/options/internal_res.c` lowers a request to what the host offers
+  (`dw3_platform_max_internal_res`): the PC 3x, the Switch the table in
+  `platforms/switch/psyz_backend/nx_res_clamp.h` (2x in handheld and docked until the OLED run
+  fills it from `tools/res_probe_summary.py`). It logs `dw3-res: clamp 3x -> 2x (handheld max)`
+  once per request and mode, and a dock change applies the other mode's limit.
+* **Turbo.** While fast-forward runs (`dw3_port_turbo_speed() >= 2`) and Native res while turbo
+  is ON, the host draws at 1x with the Nx targets still allocated, and logs `dw3-res: turbo on -> 1x`
+  and `dw3-res: turbo off -> Nx` (only when Internal resolution is above 1x). On the Switch the
+  frames fast-forward will not show also draw no mesh (`dw3-res: mesh skip on`, `mesh skip off (N
+  frames skipped)`); skipping changes no shown picture and no game state (host plumbing, rule 8 B;
+  it rides on this row, the owner can ask for a row of its own).
+* **Not locked in game.** Neither row is locked. They needed the overlay's lock mask widened: it is 64 bits now (rows 0..61, the Cheats lock is bit 62, bit 63 the layer key's in-game mark; game API ABI 7), because bit 30 was the Cheats lock and 31 the in-game mark.
+* **Environment aids** (not options): `DW3_INTERNAL_RES=1|2|3` pins the multiplier for a run,
+  `DW3_INTERNAL_RES_TURBO=0|1` the switch row; on the PC `DW3_PC_INTERNAL_RES` is an alias for one
+  release. The Switch probe NRO keeps `DW3_NX_MESH_FILTER` and `DW3_RES_DITHER=ps1` as A/B aids.
+* **Log lines.** `dw3-res: set Nx (handheld|docked|pc)`, `dw3-res: clamp ...`, `dw3-res: turbo on -> 1x`,
+  `dw3-res: turbo off -> Nx`, `dw3-res: targets Nx WxH x2 allocated in N ms (mode) bytes=...`,
+  `dw3-res: mesh targets now Nx (mode)`, `dw3-res: mesh skip on / off`, and `internal_res=N
+  internal_res_turbo=N` in the boot `file keys` line.

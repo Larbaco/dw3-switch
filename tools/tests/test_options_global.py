@@ -198,8 +198,8 @@ def test_an_unreadable_old_file_blocks_the_migration(mig, tmp_path):
 
 
 def test_too_many_keys_fails_before_writing(mig, tmp_path):
-    us = {f"a{i}": i for i in range(30)}
-    eu = {f"b{i}": i for i in range(30)}
+    us = {f"a{i}": i for i in range(40)}
+    eu = {f"b{i}": i for i in range(40)}
     g = tree(tmp_path, us=us, eu=eu)
     rc, out, _ = run(mig, "migrate", g)
     assert rc == FAILED

@@ -40,6 +40,17 @@ int cdfs_read_at(uint32_t id, void *buf, size_t offset, size_t len);
  * frame succeeds. cdfs_shutdown frees the buffer. */
 int cdfs_read_field_tile(uint32_t id, void *buf, size_t offset, size_t len);
 
+/* P6.7 (docs/LOCALIZATION.md, port/l10n): read file `id` from `relpath` (under
+ * the root, e.g. "l10n/ptbr/108.bin") instead of the map's file. The map's LBA
+ * and sector fields are kept; cdfs_file_size / cdfs_read / cdfs_read_at /
+ * cdfs_read_field_tile all follow the override. Returns 0, or -1 when the id is
+ * not in the map or the path is unsafe or longer than 47 bytes. */
+int cdfs_override_set(uint32_t id, const char *relpath);
+/* Back to the map's file (a no-op for an id with no override). */
+void cdfs_override_clear(uint32_t id);
+/* 1 while an override is set for id. */
+int cdfs_override_active(uint32_t id);
+
 /* Resolve absolute disc LBA to the map entry that covers it.
  * On success fills optional outs and returns 0; -1 if no entry. */
 int cdfs_lookup_lba(uint32_t lba, uint32_t *id_out, char *relpath_out,

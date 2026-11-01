@@ -125,10 +125,17 @@ RULES: list[tuple[str, object]] = [
     (r"^port/overlays/overlay_(table_(us|eu)|sections(_eu_extra)?)\.c$", _STAGES),
     (r"^port/patches/\d+-PORT_HOST-wstag", _STAGES),
     (r"^port/file_cache/", ("*file-cache*",)),
+    # P6.7 text pack: the loader reads every text file the game opens (title, dialogue, menus,
+    # battle, lab), so the l10n scenarios plus one scenario of each text-heavy screen
+    (r"^port/(l10n/|include/port_l10n\.h$)", ("*l10n*", "*load-menu*", "*digimon-lab*", "*battle-list-bar")),
     (r"^port/options/cheat", ("*cheat*",)),
     (r"^port/options/lang_select", ("*lang*", "*title*")),
     (r"^port/options/(widescreen|screen_fade)", ("*ws-*", "*iris*", "*title-intro*")),
-    (r"^port/options/turbo", ("*turbo*",)),
+    (r"^port/options/turbo", ("*turbo*", "*res2x*")),
+    # P6.11: the multiplier policy and the PC host's half. The 1x scenarios must not move
+    # (the rows default to 1x); the res2x family is the check of the 2x path.
+    (r"^(port/options/internal_res\.c|port/include/port_internal_res\.h|platforms/pc/src/pc_internal_res\.c)$",
+     ("*res2x*", "*res3x*", "*turbo*", "*two-battles*", "*title*")),
     (r"^port/options/restart", ("*restart*",)),
     # P9.8: the layout map. Replays bypass it (except the *nintendo* scenarios,
     # which turn it on with DW3_REPLAY_SOURCE=1), so the default is identical by
@@ -232,8 +239,8 @@ REGION_CLASS_RULES: list[tuple[str, str]] = [
     (r"^port/overlays/overlay_table_us\.c$", "us"),
     (r"^port/overlays/overlay_(table_eu|sections_eu_extra)\.c$", "eu"),
     (r"^port/overlays/overlay_sections\.c$", "both"),
-    (r"^port/(region|memcard|saves|autosave|cdfs)/", "both"),
-    (r"^port/include/port_(region|memcard|save|autosave)", "both"),
+    (r"^port/(region|memcard|saves|autosave|cdfs|l10n)/", "both"),
+    (r"^port/include/port_(region|memcard|save|autosave|l10n)", "both"),
     (r"^port/options/(lang_select|region)", "langs"),
     (r"^port/(help|pages|walkthrough)/", "langs"),
     (r"^port/include/port_(help|pages|walkthrough|text|font)", "langs"),

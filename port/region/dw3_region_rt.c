@@ -21,7 +21,7 @@ static void none_void(void) {}
 static int none_int(void) { return 0; }
 static int none_int_i(int v) { (void)v; return 0; }
 static int none_int_s(const char *s) { (void)s; return -1; }
-static unsigned none_mask(int v) { (void)v; return 0; }
+static uint64_t none_mask(int v) { (void)v; return 0; }
 static unsigned none_word(unsigned w) { return w; }
 static void none_void_i(int v) { (void)v; }
 static void none_void_s(const char *s) { (void)s; }

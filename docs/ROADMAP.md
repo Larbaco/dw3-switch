@@ -210,11 +210,11 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.4 | Fast-forward | done (owner confirmed on the OLED, 2026-10-24; 1.5x in menus, patch 0176, confirmed 2026-10-27, preview.41) | [P6.4](P6.4_FAST_FORWARD.md) |
 | P6.5 | Release packaging | done | [P6.5](P6.5_PACKAGING.md), [RELEASES](RELEASES.md) |
 | P6.6 | Localization goal | **note written 2026-11-01** (owner decision: **translation first, PT-BR for the game and for the port's own screens**); the approach, the legal line, how the game text works and the phased plan are in the note | [LOCALIZATION](LOCALIZATION.md) |
-| P6.7 | Language packs (PT-BR first) | **in progress, phase 0 built 2026-11-01 (PR open)**: design, `tools/l10n/extract_text.py` (template and `--check`), the `pt` drafts of Help, Walkthrough and Options lettering (owner review pending); chosen base: the **English slot plus a text overlay** (`text_language=ptbr`), the EU font already has every PT-BR accent; next: phase 1 pack builder and loader | [LOCALIZATION](LOCALIZATION.md) |
+| P6.7 | Language packs (PT-BR first) | **in progress, phases 0 to 2 built 2026-11-01 (phase 0 merged #415, phases 1 and 2 PR open: the pack builder, the loader, the Display > Text language row, the glyph proof, the synthetic-pack replays and the measuring pass)**; phase 0 was: design, `tools/l10n/extract_text.py` (template and `--check`), the `pt` drafts of Help, Walkthrough and Options lettering (owner review pending); chosen base: the **English slot plus a text overlay** (`text_language=ptbr`), the EU font already has every PT-BR accent; next: phase 3, the port screens in PT-BR | [LOCALIZATION](LOCALIZATION.md) |
 | P6.8 | Extra locales | open (the same mechanism as P6.7; a real `LANGUAGE` id only if a language needs its own art, [LOCALIZATION](LOCALIZATION.md#3-pack-design) section 3.1) | [LOCALIZATION](LOCALIZATION.md) |
 | P6.9 | Restart-game hotkey | in progress (hotkey works on the OLED; PC replays pass for battle, save and Continue on US and EU; OLED retest open) | [P6.9](P6.9_RESTART.md) |
 | P6.10 | Hardware render outside battle | future | [P5.2](P5.2_BATTLE_GPU.md) |
-| P6.11 | Internal resolution scaling | future (step 1 feasibility and design done 2026-10-31; build queued after D1-D5) | [P6.11](P6.11_INTERNAL_RES.md), [PC README](../platforms/pc/README.md) |
+| P6.11 | Internal resolution scaling | built 2026-11-01 (phases 1 to 3; PC and Switch, 2x clamp until the OLED run); OLED R0.x and R1-R8 open | [P6.11](P6.11_INTERNAL_RES.md), [PC README](../platforms/pc/README.md) |
 | P6.12 | Button mapping, phase 2 of the controls bundle (built 2026-10-29, PC replays pass; OLED open, plan A15 L9 to L16) | built, OLED open | [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md#phase-2-as-built-2026-10-29), [goal note](#phase-6-goal-notes) |
 | P6.14, P6.16, P6.19, P6.21 | Backlog goal notes | future | [backlog](#backlog--future-goals) |
 | P6.13 | Mapping submenu, merged into P6.12 (owner, 2026-10-24) | merged | [CONTROLS_BUNDLE](CONTROLS_BUNDLE.md) |
@@ -239,7 +239,7 @@ listed once, in [Pending OLED checks](#pending-oled-checks).
 | P6.36 | Music at normal speed while turbo is on | phases 1 and 2 built (#356), phase 3 jingle hold (4 s, owner decision) built (merged as #361); phase 4 SFX split open | [roadmap](#phase-6-goal-notes), [P6.36](P6.36_TURBO_MUSIC.md), [P6.4](P6.4_FAST_FORWARD.md), [P4.3](P4.3_AUDIO.md) |
 | P6.37 | Port version visible in game | owner request 2026-10-30; **built 2026-10-30** (PR open, not merged): one label `dw3-switch v0.6.5-preview.57 (962462d) US` from `tools/dw3_nro_version.py` (the NACP source) in a dim footer line on every Options screen, in the title's bottom right corner (file-only key `show_version`, 1 default, 0 hides it), as the first log line `dw3-version:` and in the PC window title; replays pin the text with `DW3_VERSION_OVERRIDE=replay`; replay `us/eu-title-noversion`, `us/eu-options-noversion`; OLED A20 | [roadmap](#phase-6-goal-notes), [P6.37](P6.37_VERSION.md), [P6.5](P6.5_NRO_FORMAT.md) |
 | P6.38 | Restart into the chosen region: after switching US to EU or EU to US in Options > Region at start, the game offers to relaunch into it (owner request 2026-10-30; combined image only) | **built 2026-10-30 (PR open)**: leaving the row after a change to the other region asks `Restart in EU now?` (in game with `Progress since your last save will be lost.`, cursor on No); Yes saves, flushes and relaunches (Switch `envSetNextLoad` + `--relaunch-region`, PC `execv` from the last exit handler), No keeps "takes effect at the next start"; Ask and the running region never ask; a host that cannot relaunch shows `Restart the game to apply.`; **no decomp patch**; PC replays `us/eu-options-region-relaunch-no|yes|exec|game` (tier `both`); OLED A17.1 to A17.4 pending | [roadmap](#phase-6-goal-notes), [PORT_OPTIONS](PORT_OPTIONS.md#restart-into-the-chosen-region-p638), [P51 item 4](P51_FEEDBACK.md) |
-| P6.39 | Output filter: Nearest / Bilinear / Sharp bilinear for the final stretch (P6.11 section 10.6 point 4; the docked 4.5x stretch is rough with Nearest) | **built 2026-11-01 (PR open)**: Options > Display > Output filter (registry 29, key `output_filter`, **default Nearest** = today's look); Switch GLES filtered programs (opaque, overlay over the battle mesh, mesh blit; `texelFetch`, one fetch in the middle of a texel) and PC (psyz fork `Psyz_VideoSetOutputFilter`: integer nearest prescale then linear blit); log `dw3-present: output filter <name>`; **no decomp patch**; PC replays `us/eu-output-sharp-bilinear`, `-43`, `output-bilinear` (window grab only); GPU test on Mesa GL ES 3; OLED rows OF1 to OF8 pending; default proposal in the PR | [OUTPUT_FILTER](OUTPUT_FILTER.md), [PORT_OPTIONS](PORT_OPTIONS.md#output-filter-registry-29) |
+| P6.39 | Output filter: Nearest / Bilinear / Sharp bilinear for the final stretch (P6.11 section 10.6 point 4; the docked 4.5x stretch is rough with Nearest) | **built 2026-11-01 (PR open)**: Options > Display > Output filter (registry 32, key `output_filter`, **default Nearest** = today's look); Switch GLES filtered programs (opaque, overlay over the battle mesh, mesh blit; `texelFetch`, one fetch in the middle of a texel) and PC (psyz fork `Psyz_VideoSetOutputFilter`: integer nearest prescale then linear blit); log `dw3-present: output filter <name>`; **no decomp patch**; PC replays `us/eu-output-sharp-bilinear`, `-43`, `output-bilinear` (window grab only); GPU test on Mesa GL ES 3; OLED rows OF1 to OF8 pending; default proposal in the PR | [OUTPUT_FILTER](OUTPUT_FILTER.md), [PORT_OPTIONS](PORT_OPTIONS.md#output-filter-registry-32) |
 | P7.1 | Inventory and boundaries | done | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.2 | Patched EU disc as data source | open | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
 | P7.3 | Binary-patch limits | in progress | [COMMUNITY_QOL](COMMUNITY_QOL.md) |
@@ -1097,6 +1097,14 @@ gate, which stays open.
   effort and the OLED rows L1 to L13, are in [LOCALIZATION](LOCALIZATION.md) section 7.
   Open for the owner: where the Language row goes (a one-row group first, or Display),
   the review of the PT-BR drafts, and the glossary.
+  **Phases 1 and 2 built 2026-11-01 (PR open):** `tools/l10n/build_pack.py` (pack, key variants, synthetic
+  `upper` / `partial` / `stress` / `proof` packs, `--verify`), the loader `port/l10n/` (a `port/cdfs` id override plus
+  the `FILE_SECTORS` / `COUNTS` patch and restore, sha256 source check, `dw3-l10n:` logs, no engine patch), the
+  **Display > Text language** row (registry 29, key `text_language`, `DW3_LANG`, five-language label and message
+  line, greyed with no pack), the glyph proof (all 26 accented letters and `¡ ¿ °` render in the game's own font),
+  the engine's fixed buffers (MEMCRD:39 and the names, [LOCALIZATION](LOCALIZATION.md#26a-strings-the-engine-copies-into-fixed-buffers)),
+  PC replays `eu-l10n-*` on a synthetic pack, the Switch combined image builds; OLED rows TL1 to TL8
+  ([OLED_TEST_PLAN](OLED_TEST_PLAN.md) session S). Next: phase 3, the port screens in PT-BR.
 - [ ] **P6.8 Extra locales.** Same pack mechanism for other languages;
   selection via existing EU `LANGUAGE` / `CNTY_SEL` slots or a
   `port/cdfs` id remap without rebuilding the `.nro` for each locale.
@@ -1183,6 +1191,14 @@ gate, which stays open.
   **Phase 0 (2026-11-01):** an OLED measurement NRO (`DW3_NX_RES_PROBE`, `dw3-res-probe:` log
   line, `tools/res_probe_summary.py`) and the field investigation (doc section 10). Open: the OLED
   rows R0.1 to R0.4 (owner), then the clamp table.
+  **Build, phases 1 to 3 (2026-11-01):** the Display rows Internal resolution (1x/2x/3x, `internal_res`) and Native res while
+  turbo (default ON), `port/options/internal_res.c`, the PC path through the row (the `DW3_PC_INTERNAL_RES` experiment is the row;
+  PSY-Z `Psyz_VideoReserveInternalResolution` keeps the scaled target for the turbo switch), the Switch mesh scale with 1x and Nx
+  targets pre-allocated and a per-mode clamp table (`nx_res_clamp.h`, 2x until the OLED run), `dw3-res: turbo on -> 1x` /
+  `turbo off -> Nx`, unshown mesh frames skipped in turbo, a finer dither grid at Nx, replays pinned at 1x plus a 12-scenario 2x
+  family. See [doc section 11](P6.11_INTERNAL_RES.md#11-as-built-phases-1-to-3-2026-11-01) for what differs from the design (VRAM-sized
+  Nx targets, not the display-sized pair; the turbo row is not greyed). **Still open:** OLED R0.1-R0.6 (owner) to fill the clamp
+  table, OLED R1-R8 ([session S](OLED_TEST_PLAN.md)), phase 4 polish (partner view, denser dither), the display-sized targets.
 
 - **P6.12–P6.35** (except P6.15, P6.17, P6.18, P6.20 and P6.22, which have their own entries) are goal notes, kept with their ids in
   [Backlog / future goals](#backlog--future-goals).

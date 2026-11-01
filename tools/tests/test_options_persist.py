@@ -363,7 +363,8 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
                     "items_equip_from_items", "items_equip_stays", "items_bag_view",
                     "items_use_stays", "items_partner_switch", "show_version", "map_mod",
                     "save_store", "stage_sweep", "stage_sweep_frames", "menu_instant_exit",
-                    "map_scaler", "output_filter", "defaults_gen", "options_global", "end"]
+                    "map_scaler", "text_language", "internal_res", "internal_res_turbo", "output_filter",
+                    "defaults_gen", "options_global", "end"]
 
 
 # --- P6.18 Encounter rate / Text speed rows ---------------------------------
@@ -1252,7 +1253,7 @@ def test_map_scaler_bad_values_fall_back_to_fsr1(persist_bin: Path, tmp_path: Pa
 
 # --- Output filter (registry row 29, key output_filter, Nearest by default) -----------------
 
-OFILTER = "29"
+OFILTER = "32"
 
 
 def test_output_filter_defaults_to_nearest_and_is_a_word_in_the_file(persist_bin: Path, tmp_path: Path):

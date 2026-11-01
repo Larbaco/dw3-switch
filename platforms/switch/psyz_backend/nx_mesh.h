@@ -98,12 +98,23 @@ void dw3_nx_mesh_note_soft_view(int x0, int y0, int x1, int y1);
 bool dw3_nx_mesh_soft_view_in(int dx, int dy, int dw, int dh, int *x, int *y,
                               int *w, int *h);
 
-/* P6.11 phase 0 test aids (nx_res_probe.h). The mesh and gutter targets are
- * scale times the VRAM size; 1 is the shipped path. set_scale / cycle_scale
- * apply at the next frame boundary. target_bytes is 0 before init. */
+/* P6.11 internal resolution (docs/P6.11_INTERNAL_RES.md). The mesh and gutter
+ * targets are `scale` times the VRAM size; 1 is the shipped path. target_bytes
+ * is 0 before init and counts every set that is allocated.
+ *
+ * apply_res: from the port (dw3_platform_apply_internal_res), at a frame
+ * boundary. The multiplier drawn at is `active`; the Nx targets are kept
+ * allocated for max(active, reserve), so switching to 1x and back (fast-forward)
+ * allocates nothing. A change is deferred while a battle is held under Options.
+ * frame_begin: once per game frame, before it draws; `skip` = the frame will not
+ * be shown, so it draws no mesh (the targets keep the last shown frame).
+ * cycle_scale: the measurement chord, a probe build only. */
 int dw3_nx_mesh_scale(void);
 uint64_t dw3_nx_mesh_target_bytes(void);
-void dw3_nx_mesh_set_scale(int n);
+void dw3_nx_mesh_apply_res(int active, int reserve);
+void dw3_nx_mesh_frame_begin(int skip);
+/* Frames skipped since the last call (the probe line's skip= field). */
+unsigned dw3_nx_mesh_take_skip_frames(void);
 int dw3_nx_mesh_cycle_scale(void);
 /* Drop the queued triangles without drawing them (a frame turbo does not
  * show, DW3_NX_MESH_SKIP). Leaves every other state alone. */

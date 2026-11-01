@@ -13,6 +13,7 @@
 #define CDFS_ROOT_MAX 512
 #define CDFS_PATH_MAX 512
 #define CDFS_KEY_MAX 32
+#define CDFS_ALT_MAX 48
 
 typedef struct {
     uint32_t id;
@@ -21,6 +22,9 @@ typedef struct {
     uint32_t lba;       /* absolute disc LBA; 0 if unknown */
     uint32_t sectors;   /* extent length in sectors; 0 if unknown */
     uint32_t form;      /* 1 = Form1/2048, 2 = Form2 pack, 0 unknown */
+    char alt[CDFS_ALT_MAX]; /* P6.7: a replacement path under the root (the text
+                             * pack, port/l10n); "" = none. Reads use it in place
+                             * of `path`, the disc layout (lba, sectors) is kept. */
 } CdfsEntry;
 
 static char g_root[CDFS_ROOT_MAX];
@@ -156,10 +160,11 @@ static int entries_push(uint32_t id, const char *path, uint32_t map_bytes,
     e->lba = lba;
     e->sectors = sectors;
     e->form = form;
+    e->alt[0] = '\0';
     return 0;
 }
 
-static const CdfsEntry *find_entry(uint32_t id) {
+static CdfsEntry *find_entry_mut(uint32_t id) {
     size_t i;
     for (i = 0; i < g_count; i++) {
         if (g_entries[i].id == id) {
@@ -167,6 +172,40 @@ static const CdfsEntry *find_entry(uint32_t id) {
         }
     }
     return NULL;
+}
+
+static const CdfsEntry *find_entry(uint32_t id) {
+    return find_entry_mut(id);
+}
+
+/* The path reads open: the override when there is one, else the map's. */
+static const char *entry_path(const CdfsEntry *e) {
+    return e->alt[0] != '\0' ? e->alt : e->path;
+}
+
+int cdfs_override_set(uint32_t id, const char *relpath) {
+    CdfsEntry *e = find_entry_mut(id);
+
+    if (e == NULL || relpath == NULL || relpath[0] == '\0' ||
+        strlen(relpath) >= CDFS_ALT_MAX || !path_is_safe_relative(relpath)) {
+        return -1;
+    }
+    memcpy(e->alt, relpath, strlen(relpath) + 1);
+    return 0;
+}
+
+void cdfs_override_clear(uint32_t id) {
+    CdfsEntry *e = find_entry_mut(id);
+
+    if (e != NULL) {
+        e->alt[0] = '\0';
+    }
+}
+
+int cdfs_override_active(uint32_t id) {
+    const CdfsEntry *e = find_entry(id);
+
+    return e != NULL && e->alt[0] != '\0';
 }
 
 static int join_path(char *out, size_t outlen, const char *rel) {
@@ -605,7 +644,7 @@ uint32_t cdfs_file_size(uint32_t id) {
     if (e == NULL) {
         return (uint32_t)-1;
     }
-    if (join_path(path, sizeof(path), e->path) != 0) {
+    if (join_path(path, sizeof(path), entry_path(e)) != 0) {
         return (uint32_t)-1;
     }
     if (host_file_size(path, &sz) != 0) {
@@ -628,7 +667,7 @@ int cdfs_read(uint32_t id, void *buf, size_t buflen) {
     if (e == NULL) {
         return -1;
     }
-    if (join_path(path, sizeof(path), e->path) != 0) {
+    if (join_path(path, sizeof(path), entry_path(e)) != 0) {
         return -1;
     }
     if (host_file_size(path, &sz) != 0) {
@@ -668,7 +707,7 @@ int cdfs_read_at(uint32_t id, void *buf, size_t offset, size_t len) {
     if (e == NULL) {
         return -1;
     }
-    if (join_path(path, sizeof(path), e->path) != 0) {
+    if (join_path(path, sizeof(path), entry_path(e)) != 0) {
         return -1;
     }
     if (host_file_size(path, &sz) != 0) {
@@ -714,7 +753,7 @@ static int map_load(uint32_t id) {
     if (e == NULL) {
         return -1;
     }
-    if (join_path(path, sizeof(path), e->path) != 0) {
+    if (join_path(path, sizeof(path), entry_path(e)) != 0) {
         return -1;
     }
     t0 = mono_us();
