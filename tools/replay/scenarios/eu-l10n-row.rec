@@ -29,15 +29,17 @@ pad 600 0x0040
 pad 605 0x0000
 pad 620 0x0040
 pad 625 0x0000
-shot 680 row-original
-pad 700 0x0020
-pad 705 0x0000
-shot 760 row-ptbr
-pad 780 0x0080
-pad 785 0x0000
-shot 840 row-back
-pad 860 0x1000
-pad 865 0x0000
+pad 640 0x0040
+pad 645 0x0000
+shot 700 row-original
+pad 720 0x0020
+pad 725 0x0000
+shot 780 row-ptbr
+pad 800 0x0080
+pad 805 0x0000
+shot 860 row-back
 pad 880 0x1000
 pad 885 0x0000
-end 940
+pad 900 0x1000
+pad 905 0x0000
+end 960

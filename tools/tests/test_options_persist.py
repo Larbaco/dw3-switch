@@ -363,8 +363,8 @@ def test_volume_keys_are_in_the_written_file_order(persist_bin: Path, tmp_path: 
                     "items_equip_from_items", "items_equip_stays", "items_bag_view",
                     "items_use_stays", "items_partner_switch", "show_version", "map_mod",
                     "save_store", "stage_sweep", "stage_sweep_frames", "menu_instant_exit",
-                    "map_scaler", "text_language", "internal_res", "internal_res_turbo", "defaults_gen",
-                    "options_global", "end"]
+                    "map_scaler", "text_language", "internal_res", "internal_res_turbo", "output_filter",
+                    "defaults_gen", "options_global", "end"]
 
 
 # --- P6.18 Encounter rate / Text speed rows ---------------------------------
@@ -1249,3 +1249,40 @@ def test_map_scaler_bad_values_fall_back_to_fsr1(persist_bin: Path, tmp_path: Pa
         out, err = session(persist_bin, tmp_path, "level", SCALER)
         assert out == [f"level{SCALER}=3"], bad
         assert f"map_scaler={bad} is not valid; using default fsr1" in err, bad
+
+
+# --- Output filter (registry row 29, key output_filter, Nearest by default) -----------------
+
+OFILTER = "32"
+
+
+def test_output_filter_defaults_to_nearest_and_is_a_word_in_the_file(persist_bin: Path, tmp_path: Path):
+    out, _ = session(persist_bin, tmp_path, "level", OFILTER)
+    assert out == [f"level{OFILTER}=0"]                                  # Nearest
+    session(persist_bin, tmp_path, "open", "row", OFILTER, "press")      # 0 -> 1 (Bilinear)
+    assert keys_of((tmp_path / CFG).read_text())["output_filter"] == "bilinear"
+
+
+def test_output_filter_steps_through_the_three_values_and_wraps(persist_bin: Path, tmp_path: Path):
+    words = []
+    for _ in range(4):
+        session(persist_bin, tmp_path, "open", "row", OFILTER, "press")
+        words.append(keys_of((tmp_path / CFG).read_text())["output_filter"])
+    assert words == ["bilinear", "sharp", "nearest", "bilinear"]
+    session(persist_bin, tmp_path, "open", "row", OFILTER, "left")
+    assert keys_of((tmp_path / CFG).read_text())["output_filter"] == "nearest"
+
+
+@pytest.mark.parametrize("word,value", [("nearest", 0), ("bilinear", 1), ("sharp", 2)])
+def test_output_filter_loads_each_word(persist_bin: Path, tmp_path: Path, word, value):
+    (tmp_path / CFG).write_text(f"version=1\ndefaults_gen=2\noutput_filter={word}\nend=1\n")
+    out, _ = session(persist_bin, tmp_path, "level", OFILTER)
+    assert out == [f"level{OFILTER}={value}"]
+
+
+def test_output_filter_bad_values_fall_back_to_nearest(persist_bin: Path, tmp_path: Path):
+    for bad in ("1", "Sharp", "sharp bilinear", ""):
+        (tmp_path / CFG).write_text(f"version=1\ndefaults_gen=2\noutput_filter={bad}\nend=1\n")
+        out, err = session(persist_bin, tmp_path, "level", OFILTER)
+        assert out == [f"level{OFILTER}=0"], bad
+        assert f"output_filter={bad} is not valid; using default nearest" in err, bad

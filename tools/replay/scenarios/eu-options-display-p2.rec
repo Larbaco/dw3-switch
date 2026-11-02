@@ -1,4 +1,4 @@
-# EU: D1 / D5 Display rows Map scaler, Map mod pack and Version label, phase 2
+# EU: D1 / D5 Display rows Map scaler, Output filter, Map mod pack and Version label, phase 2
 pad 110 0x0008
 pad 115 0x0000
 pad 160 0x0008
@@ -27,9 +27,11 @@ pad 580 0x0040
 pad 585 0x0000
 pad 600 0x0040
 pad 605 0x0000
-shot 660 display-restored
-pad 680 0x1000
-pad 685 0x0000
+pad 620 0x0040
+pad 625 0x0000
+shot 680 display-restored
 pad 700 0x1000
 pad 705 0x0000
-end 760
+pad 720 0x1000
+pad 725 0x0000
+end 780

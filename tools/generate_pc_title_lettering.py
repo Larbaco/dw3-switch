@@ -365,6 +365,16 @@ EXTRA_ROWS = {
                     'Turbo zeichnet in 1x, danach wieder Ihre Stufe.',
                     'El turbo usa 1x y luego vuelve a tu ajuste.',
                     'Il turbo usa 1x, poi torna alla tua impostazione.')},
+    # Registry row 32 (Display): how the 2D picture is stretched to the screen. The
+    # values reuse the Map scaler's product names (SCALER_VALUES: Nearest, Bilinear,
+    # Sharp bilinear), the same in every language.
+    'of': {'row': ('Output filter', 'Filtre de sortie', 'Ausgabefilter', 'Filtro de salida',
+                   'Filtro di uscita'),
+           'desc': ('How the picture is stretched. Sharp suits a TV.',
+                    "Étirement de l'image. Sharp va bien sur TV.",
+                    'Wie das Bild gestreckt wird. Sharp passt zum TV.',
+                    'Cómo se estira la imagen. Sharp va bien en TV.',
+                    "Come si allarga l'immagine. Sharp è ideale per TV.")},
 }
 # P6.7 (registry row 29, Display, the last row): the language of the game's text and, since
 # phase 3, of the port's own screens. The values are Original and the language's own name,

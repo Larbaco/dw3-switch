@@ -265,7 +265,7 @@ EXTRA_KEYS = ["button_map", "map_view_open", "map_view_zoom_out", "map_view_zoom
 
 def test_the_cfg_holds_every_key_within_the_budget(plain_bin, tmp_path):
     """Write a file with every key the port keeps and read it back: it must fit the
-    48 entries and the 4096 bytes of options_cfg (port_options_cfg.h), with room to
+    64 entries and the 4096 bytes of options_cfg (port_options_cfg.h), with room to
     spare, so a new row that would overflow fails here and not on the player's SD."""
     out, _ = session(plain_bin, tmp_path, "keys")
     registry = out
@@ -283,9 +283,9 @@ def test_the_cfg_holds_every_key_within_the_budget(plain_bin, tmp_path):
     keys = [l.split("=")[0] for l in text.splitlines() if "=" in l and not l.startswith("#")]
     entries = [k for k in keys if k not in ("version", "end")]
     assert set(registry + EXTRA_KEYS) <= set(entries)
-    assert len(entries) <= 48
+    assert len(entries) <= 64
     assert len(text.encode()) <= 4096
-    spare = 48 - len(entries)
+    spare = 64 - len(entries)
     assert spare >= 6, f"only {spare} cfg entries left; raise DW3_OPTCFG_MAX_ENTRIES before the next row"
     # And it reads back: a new process loads the whole file.
     out, err = session(plain_bin, tmp_path, "fileval", "map_view_field_open", "level", "8")

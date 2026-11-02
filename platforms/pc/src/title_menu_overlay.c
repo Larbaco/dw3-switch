@@ -289,6 +289,25 @@ static void set_three_x_presentation_size(void) {
 
     if (g_presentation_size_checked || !g_window ||
         (SDL_GetWindowFlags(g_window) & SDL_WINDOW_HIDDEN)) return;
+    /* Test aid: DW3_PC_WINDOW=1200x900 opens the window at that size in pixels, so
+     * the replays can look at a non-integer stretch (the docked Switch is 4.5x) for the
+     * Output filter. Not an option. */
+    {
+        const char *want = getenv("DW3_PC_WINDOW");
+        int ww = 0, wh = 0;
+
+        if (want && sscanf(want, "%dx%d", &ww, &wh) == 2 && ww >= 320 && wh >= 240 &&
+            ww <= 7680 && wh <= 4320) {
+            float d = SDL_GetWindowPixelDensity(g_window);
+
+            if (d <= 0.0f) d = 1.0f;
+            g_presentation_size_checked = 1;
+            SDL_SetWindowSize(g_window, (int)((float)ww / d + 0.5f), (int)((float)wh / d + 0.5f));
+            SDL_SetWindowPosition(g_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+            fprintf(stderr, "dw3-title-overlay: test window set to %dx%d pixels (DW3_PC_WINDOW)\n", ww, wh);
+            return;
+        }
+    }
     if (dw3_pc_internal_res_target() != 3) {
         g_presentation_size_checked = 1;
         return;
@@ -1286,7 +1305,35 @@ static void tile_ensure(void) {
     }
 }
 
+/* Options > Display > Output filter (registry 29): handed to the renderer when the
+ * row changes. Runs from the frame callback (which comes after the blit of the frame,
+ * so a change shows on the next one) and once at registration for the boot value. */
+static void output_filter_sync(void) {
+    static int applied = -1;
+    static const char *const names[DW3_OUTFILTER_COUNT] = {"nearest", "bilinear",
+                                                            "sharp"};
+    static const PsyzOutputFilter map[DW3_OUTFILTER_COUNT] = {
+        PSYZ_OUTPUT_NEAREST, PSYZ_OUTPUT_BILINEAR, PSYZ_OUTPUT_SHARP};
+    int level = dw3_port_options_level(DW3_PORT_OPT_OUTPUT_FILTER);
+
+    if (level < 0 || level >= DW3_OUTFILTER_COUNT) {
+        level = DW3_OUTFILTER_DEFAULT;
+    }
+    if (level == applied) {
+        return;
+    }
+    if (Psyz_VideoSetOutputFilter(map[level]) != 0) {
+        fprintf(stderr, "dw3-present: output filter %s is not supported by this "
+                "renderer; staying on nearest\n", names[level]);
+        level = DW3_OUTFILTER_NEAREST;
+        (void)Psyz_VideoSetOutputFilter(PSYZ_OUTPUT_NEAREST);
+    }
+    applied = level;
+    fprintf(stderr, "dw3-present: output filter %s\n", names[level]);
+}
+
 static void overlay_frame(void) {
+    output_filter_sync();
     /* Compose the options window layers (title and in-game layouts) on a
      * low-priority worker thread while the screen is closed, so opening it
      * never rasters on the frame thread (title_options_cache.h). */
@@ -1549,6 +1596,7 @@ static void destroy_overlay(void) {
 }
 
 void dw3_pc_title_menu_overlay_register(void) {
+    output_filter_sync();
     Psyz_OverlayInit_SDL3GPU(init_overlay);
     Psyz_OverlayFrameCB(overlay_frame);
     Psyz_OverlayRender_SDL3GPU(render_overlay);

@@ -136,7 +136,21 @@ enum {
      * fast-forward is on the game draws at 1x, then returns to the chosen
      * resolution; on the Switch it also skips the mesh frames turbo never shows.
      * Key internal_res_turbo. */
-    DW3_PORT_OPT_INTERNAL_RES_TURBO = 31
+    DW3_PORT_OPT_INTERNAL_RES_TURBO = 31,
+    /* Output filter (docs/OUTPUT_FILTER.md): how the 2D picture is stretched to the
+     * screen, a Display row (Nearest / Bilinear / Sharp bilinear). Stored as a
+     * DW3_OUTFILTER_*, written as a word: output_filter=nearest|bilinear|sharp.
+     * Default Nearest, today's look. Read at every present, in game too. */
+    DW3_PORT_OPT_OUTPUT_FILTER = 32
+};
+
+/* The values of the Output filter row, and the words of its cfg key. */
+enum {
+    DW3_OUTFILTER_NEAREST = 0,
+    DW3_OUTFILTER_BILINEAR = 1,
+    DW3_OUTFILTER_SHARP = 2,
+    DW3_OUTFILTER_COUNT = 3,
+    DW3_OUTFILTER_DEFAULT = DW3_OUTFILTER_NEAREST /* what the port always did */
 };
 
 /* P6.11: the values of the Internal resolution row (stored 0..2 = 1x..3x). */

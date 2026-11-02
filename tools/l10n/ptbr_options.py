@@ -100,6 +100,8 @@ PT_LETTERING = {
     'opt_desc_x_ir': '3D mais suave na batalha. Mais alto = mais bateria.',
     'opt_row_x_rt': 'Res. nativa no turbo',
     'opt_desc_x_rt': 'O turbo desenha em 1x e volta ao seu ajuste depois.',
+    'opt_row_x_of': 'Filtro de saída',
+    'opt_desc_x_of': 'Como a imagem é esticada. Sharp fica bem na TV.',
     'opt_val_sw_run': 'Executar',
     'opt_val_sw_over': 'Recomeçar',
     'opt_row_mb0': 'Abrir o mapa',

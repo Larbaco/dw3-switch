@@ -886,22 +886,25 @@ def options_menus(version, phase):
 
 
 def options_display(version, phase):
-    """D1 + D5 + P6.11: Display has eight rows (Widescreen, Internal resolution, Native res
-    while turbo, Map screen, Map scaler, Map mod pack, Version label, Text language). Phase 1: Down x4 to Map
-    scaler and Left (FSR 1 -> Lanczos2, `scaler-changed`), Down to Map mod pack and Confirm
+    """D1 + D5 + P6.11: Display has nine rows (Widescreen, Internal resolution, Native res
+    while turbo, Map screen, Map scaler, Output filter, Map mod pack, Version label, Text language). Phase 1: Down x4 to Map
+    scaler and Left (FSR 1 -> Lanczos2, `scaler-changed`), Down to Output filter and Right x2 (Nearest ->
+    Bilinear -> Sharp bilinear, `filter-changed`), Down to Map mod pack and Confirm
     (OFF), Down to Version label and Confirm (OFF) (`display-off`); phase 2 reads them back
     from the file (`display-restored`)."""
-    r = Rec(f"{version.upper()}: D1 / D5 Display rows Map scaler, Map mod pack and Version label, phase {phase}")
+    r = Rec(f"{version.upper()}: D1 / D5 Display rows Map scaler, Output filter, Map mod pack and Version label, phase {phase}")
     m = _to_options(r, version)
     f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)
     if phase == 1:
         r.shot(f + 20, "display-rows")
         f = _keys(r, f + 40, DOWN, DOWN, DOWN, DOWN, LEFT)
         r.shot(f + 40, "scaler-changed")
+        f = _keys(r, f + 60, DOWN, RIGHT, RIGHT)
+        r.shot(f + 40, "filter-changed")
         f = _keys(r, f + 60, DOWN, CROSS, DOWN, CROSS)
         r.shot(f + 40, "display-off")
     else:
-        f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN, DOWN, DOWN)
+        f = _keys(r, f + 20, DOWN, DOWN, DOWN, DOWN, DOWN, DOWN, DOWN)
         r.shot(f + 40, "display-restored")
     f = _keys(r, f + 60, TRIANGLE, TRIANGLE)
     r.end(f + 40)
@@ -909,7 +912,7 @@ def options_display(version, phase):
 
 
 def l10n_row(version, with_pack):
-    """P6.7 phase 2: Options > Display, Down x7 to Text language (the eighth and last row; P6.11 put two rows before the map ones). With a pack:
+    """P6.7 phase 2: Options > Display, Down x8 to Text language (the ninth and last row; P6.11 put two rows before the map ones, the Output filter one after the Map scaler). With a pack:
     `row-original` (Original), Right (Portugues (BR), `row-ptbr`), Left (`row-back`). With no
     pack: `row-original-nopack` (the message line says no pack is found) and Right, which
     is not refused since phase 3 (`row-ptbr-nopack`): the port's own screens are in Portuguese,
@@ -917,7 +920,7 @@ def l10n_row(version, with_pack):
     r = Rec(f"{version.upper()}: P6.7 Display > Text language, {'pack installed' if with_pack else 'no pack'}")
     m = _to_options(r, version)
     f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)
-    f = _keys(r, f + 20, *([DOWN] * 7))
+    f = _keys(r, f + 20, *([DOWN] * 8))
     if with_pack:
         r.shot(f + 40, "row-original")
         f = _keys(r, f + 60, RIGHT)
@@ -944,7 +947,7 @@ def ptbr_options(version):
     r.shot(m + 60, "options-list")
     f = _group(r, m + 70, GRP_DISPLAY, GRP_DISPLAY)
     r.shot(f + 30, "display")
-    f = _keys(r, f + 40, *([DOWN] * 7))
+    f = _keys(r, f + 40, *([DOWN] * 8))
     r.shot(f + 40, "row-text-language")
     f = _keys(r, f + 60, TRIANGLE)
     for frm, to, tag in ((GRP_DISPLAY, GRP_GAMEPLAY, "gameplay"), (GRP_GAMEPLAY, GRP_CONTROLS, "controls"),

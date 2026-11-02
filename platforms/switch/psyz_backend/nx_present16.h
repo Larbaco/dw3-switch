@@ -28,6 +28,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "nx_output_filter.h"
+
 /* Include after <GLES3/gl3.h>. */
 
 /* The RGBA8888 path (nx_vram_pack.c), GLSL ES 1.00: kept for the ES 2 context,
@@ -120,6 +122,68 @@ static const char *const DW3_NX_P16_UI_FS =
     "    if (!keep) discard;\n"
     "  }\n"
     "  o_color = vec4(rgb555(v), 1.0);\n"
+    "}\n";
+
+/* The same two programs with the output filter (nx_output_filter.h: bilinear or
+ * sharp bilinear, chosen by u_flt.x). They fetch the halfwords with texelFetch,
+ * clamped to the rectangle shown, and expand each tap with rgb555() above, so the
+ * colours are the ones the Nearest programs give. They are built only when the
+ * player picks a filter. */
+static const char *const DW3_NX_P16_QUAD_FS_F =
+    DW3_NX_P16_FS_HEAD DW3_NX_FLT_COMMON
+    "uint tap(ivec2 i, ivec2 lo, ivec2 hi) {\n"
+    "  return texelFetch(u_tex, clamp(i, lo, hi), 0).r;\n"
+    "}\n"
+    "void main() {\n" DW3_NX_FLT_RECT("u_tex")
+    "  highp vec3 c = rgb555(tap(i, lo, hi));\n"
+    "  if (w.x != 0.0 || w.y != 0.0) {\n"
+    "    highp vec3 c10 = rgb555(tap(i + ivec2(1, 0), lo, hi));\n"
+    "    highp vec3 c01 = rgb555(tap(i + ivec2(0, 1), lo, hi));\n"
+    "    highp vec3 c11 = rgb555(tap(i + ivec2(1, 1), lo, hi));\n"
+    "    c = mix(mix(c, c10, w.x), mix(c01, c11, w.x), w.y);\n"
+    "  }\n"
+    "  o_color = vec4(c, 1.0);\n"
+    "}\n";
+
+/* A texel the Nearest overlay program drops (no colour, no mask bit outside
+ * u_keep) is dropped here too, by the texel under the fragment, and does not
+ * enter the blend: the weights of the kept taps are renormalised. */
+static const char *const DW3_NX_P16_UI_FS_F =
+    DW3_NX_P16_FS_HEAD DW3_NX_FLT_COMMON
+    "uniform vec4 u_keep;\n"
+    "uint tap(ivec2 i, ivec2 lo, ivec2 hi) {\n"
+    "  return texelFetch(u_tex, clamp(i, lo, hi), 0).r;\n"
+    "}\n"
+    "bool shown(uint v, bool inside) {\n"
+    "  return (v & 0x7FFFu) != 0u || ((v & 0x8000u) != 0u && inside);\n"
+    "}\n"
+    "void main() {\n" DW3_NX_FLT_RECT("u_tex")
+    "  bool inside = v_t.x >= u_keep.x && v_t.y >= u_keep.y &&\n"
+    "                v_t.x < u_keep.z && v_t.y < u_keep.w;\n"
+    "  uint v00 = tap(i, lo, hi);\n"
+    "  if (w.x == 0.0 && w.y == 0.0) {\n"
+    "    if (!shown(v00, inside)) discard;\n"
+    "    o_color = vec4(rgb555(v00), 1.0);\n"
+    "    return;\n"
+    "  }\n"
+    "  uint v = tap(ivec2(clamp(floor(t), vec2(lo), vec2(hi))), lo, hi);\n"
+    "  if (!shown(v, inside)) discard;\n"
+    "  uint v10 = tap(i + ivec2(1, 0), lo, hi);\n"
+    "  uint v01 = tap(i + ivec2(0, 1), lo, hi);\n"
+    "  uint v11 = tap(i + ivec2(1, 1), lo, hi);\n"
+    "  highp vec4 k = vec4((1.0 - w.x) * (1.0 - w.y), w.x * (1.0 - w.y),\n"
+    "                      (1.0 - w.x) * w.y, w.x * w.y);\n"
+    "  k.x = shown(v00, inside) ? k.x : 0.0;\n"
+    "  k.y = shown(v10, inside) ? k.y : 0.0;\n"
+    "  k.z = shown(v01, inside) ? k.z : 0.0;\n"
+    "  k.w = shown(v11, inside) ? k.w : 0.0;\n"
+    "  highp float sum = k.x + k.y + k.z + k.w;\n"
+    "  highp vec3 c = rgb555(v);\n"
+    "  if (sum > 0.0) {\n"
+    "    c = (k.x * rgb555(v00) + k.y * rgb555(v10) + k.z * rgb555(v01) +\n"
+    "         k.w * rgb555(v11)) / sum;\n"
+    "  }\n"
+    "  o_color = vec4(c, 1.0);\n"
     "}\n";
 
 /* The 16-bit upload: the halfwords of VRAM go to an R16UI texture as they are,

@@ -194,7 +194,7 @@ group), from the list to the title, or to the field menu when opened there, see
 [Options in the field](#options-in-the-field). A line under the list explains the
 focused item. The words are in the language of the disc. Changes are saved at once in `port_options.cfg`
 ([PORT_OPTIONS](PORT_OPTIONS.md#persistence)). Defaults keep the original
-game, except Widescreen, the Nintendo button layout, the Switch glyphs (on the Switch) and the map scaler (FSR 1).
+game, except Widescreen, the Nintendo button layout, the Switch glyphs (on the Switch) and the map scaler (FSR 1). The Output filter is Nearest, the look the port always had.
 
 | Group | Row | Values | Default | What it does |
 |---|---|---|---|---|
@@ -209,6 +209,7 @@ game, except Widescreen, the Nintendo button layout, the Switch glyphs (on the S
 | Display | Internal resolution | 1x / 2x / 3x | 1x | Draws the 3D of battles at 2 or 3 times the original pixels: smoother edges, less shimmer, more battery. The polygons still wobble as on the PS1, and the sprites, text and menus stay as they were. On the PC the whole picture is scaled. The console may offer less than 3x (handheld and docked each have a limit); a value above it is lowered and the log says so. |
 | Display | Native res while turbo | ON / OFF | ON | While fast-forward runs the game draws at 1x, and on the Switch it skips the battle frames that fast-forward never shows, then goes back to your resolution when it ends. OFF keeps your resolution during fast-forward. |
 | Display | Map scaler | Nearest / Sharp bilinear / Lanczos2 / FSR 1 / Bilinear | FSR 1 | The picture filter of the full-screen map, used the next time the map opens. The map shows as Nearest for a moment while FSR 1 or Lanczos2 is built in the background. ZL / ZR in the map change it until you close the game. |
+| Display | Output filter | Nearest / Bilinear / Sharp bilinear | Nearest | How the picture is stretched to the screen. Nearest keeps hard pixels (the original look). On a TV (docked) the picture is stretched 4.5x and Nearest makes the pixel columns uneven; **Sharp bilinear** keeps the pixels crisp and softens only the seams, which looks better there. Bilinear blurs. In handheld the stretch is exactly 3x and Sharp bilinear looks the same as Nearest. It applies at once. |
 | Display | Map mod pack | ON / OFF | ON | Uses an installed map-upscale pack for the full-screen map; OFF shows the original map. |
 | Display | Version label | ON / OFF | ON | Shows the port version in the corner of the title screen. |
 | Menus | Equip from Items, Equip stays on list, Whole bag, Use item stays, Partner switch | ON / OFF | ON | The Items-menu shortcuts of this port. OFF gives the original Items menu for that shortcut. |

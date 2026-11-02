@@ -3086,13 +3086,18 @@ for _v in ("us", "eu"):
                   note="Options > Menus: the six switches (the five Items-menu ones and Instant menu exit) turned OFF are read back by the next process (D1, patch 0200)"),
          Scenario(f"{_v}-options-display", _v, "full", timeout=300,
                   phases=(f"{_v}-options-display-p1", f"{_v}-options-display-p2"),
-                  expect_log=((0, r"dw3-port-options: group open display \(7 row\(s\), title\)(?s:.*)"
+                  cfg=(("output_filter", "nearest"),),  # the file is seeded: phase 2 must read what phase 1 wrote
+                  expect_log=((0, r"dw3-port-options: group open display \(9 row\(s\), title\)(?s:.*)"
                                   r"dw3-port-options: map scaler lanczos2(?s:.*)"
+                                  r"dw3-port-options: output filter bilinear(?s:.*)"
+                                  r"dw3-port-options: output filter sharp bilinear(?s:.*)"
                                   r"dw3-port-options: map mod pack disabled(?s:.*)"
                                   r"dw3-port-options: version label disabled"),
-                              (1, r"dw3-options: file keys .* show_version=0 map_mod=0 .*map_scaler=lanczos2")),
-                  forbid_log=_NO_BAD + ((1, r"is not valid"),),
-                  note="Options > Display: Map scaler (FSR 1 to Lanczos2, D5), Map mod pack and Version label turned OFF are read back by the next process (D1)"),
+                              (0, r"dw3-present: output filter nearest(?s:.*)dw3-present: output filter sharp"),
+                              (1, r"dw3-options: file keys .* show_version=0 map_mod=0 .*map_scaler=lanczos2 .*output_filter=sharp"),
+                              (1, r"dw3-present: output filter sharp")),
+                  forbid_log=_NO_BAD + ((1, r"is not valid"), (0, r"output filter \S+ is not supported")),
+                  note="Options > Display: Map scaler (FSR 1 to Lanczos2, D5), Output filter (Nearest to Sharp bilinear), Map mod pack and Version label turned OFF are read back by the next process (D1)"),
          Scenario(f"{_v}-options-saves", _v, "full", timeout=300,
                   expect_log=((0, r"dw3-port-options: group open saves \(2 row\(s\), title\)(?s:.*)"
                                   r"dw3-port-confirm: open shared saves \(cursor on No\)(?s:.*)"
@@ -3760,9 +3765,9 @@ for _i, _s in enumerate(SCENARIOS):
         SCENARIOS[_i] = _pin_cfg(_s, *_pins)
 
 # The Display group has five rows since D5 (Map scaler), six since P6.7 (Text language), eight since P6.11
-# (Internal resolution, Native res while turbo), and the layout flows start from the file now.
+# (Internal resolution, Native res while turbo), nine since the Output filter, and the layout flows start from the file now.
 for _i, _s in enumerate(SCENARIOS):
-    _rep = lambda es: tuple((p, re.sub(r"group open display \\\(\d row\\\(s\\\)", r"group open display \\(8 row\\(s\\)", r))
+    _rep = lambda es: tuple((p, re.sub(r"group open display \\\(\d row\\\(s\\\)", r"group open display \\(9 row\\(s\\)", r))
                             for p, r in es)
     _new = dataclasses.replace(_s, expect_log=_rep(_s.expect_log), expect_log_both=_rep(_s.expect_log_both))
     if _new.name.endswith(("-controls-layout", "-controls-custom")):
@@ -3916,7 +3921,7 @@ _add(
              forbid_log=_L10N_OFF_BAD + ((0, r"show keys: this pack has no key variants"),),
              note="DW3_L10N_SHOW_KEYS=1: every string starts with its key, \"(MEMCRD:3) \""),
     Scenario("eu-l10n-row", "eu", "full", timeout=300, l10n="upper",
-             expect_log=((0, r"dw3-port-options: group open display \(8 row\(s\), title\)(?s:.*)"
+             expect_log=((0, r"dw3-port-options: group open display \(9 row\(s\), title\)(?s:.*)"
                              r"dw3-port-options: text language ptbr(?s:.*)"
                              r"dw3-l10n: option text_language=ptbr region=eu(?s:.*)"
                              r"dw3-l10n: override id=\d+(?s:.*)"
@@ -3962,7 +3967,7 @@ _PT_FORBID = ((0, r"dw3-l10n: (override|pack ok)"), (0, r"refused"), (0, r"dw3-p
 for _v, _reg in (("us", "US"), ("eu", "EU")):
     _add(
         Scenario(f"{_v}-ptbr-options", _v, "full", timeout=300, l10n="none", cfg=_L10N_CFG,
-                 expect_log=(_PT_LOG, (0, r"dw3-port-options: group open display \(8 row\(s\), title\)(?s:.*)"
+                 expect_log=(_PT_LOG, (0, r"dw3-port-options: group open display \(9 row\(s\), title\)(?s:.*)"
                                           r"dw3-port-options: group open gameplay(?s:.*)"
                                           r"dw3-port-options: group open controls(?s:.*)"
                                           r"dw3-port-options: group open saves")),
@@ -4016,3 +4021,46 @@ for _base, _label in _FIT_BASES:
         cfg=_b.cfg + _L10N_CFG, expect_log=_b.expect_log + tuple((i, r.replace("synthetic=upper", "synthetic=stress")) for i, r in _L10N_ON),
         forbid_log=_L10N_OFF_BAD,  # the longer text can change the timing a base scenario's forbid lines rely on
         note=f"measuring pass: {_base} with the longest PT-like strings (stress pack)"))
+
+# --- Output filter (docs/OUTPUT_FILTER.md) ---------------------------------------------------
+# The window grab (the .png) is the only reference a filter changes; the PS1 frame (the .ppm) is
+# the same. The runner pins every other scenario to Nearest (DW3_OUTPUT_FILTER=0, replay_tests.py),
+# so nothing moves when the default does. These run the battle report at a window size that is not
+# a whole multiple of the picture: 1200x900 (the largest the 1280x960 Xvfb screen takes) is 3.75x for 4:3
+# and 2.82x for 16:9; the docked Switch's 4.5x is covered by tools/output_filter_gpu_test.c.
+#  output-sharp-bilinear      widescreen (the default), `output_filter=sharp`
+#  output-sharp-bilinear-43   `widescreen=0` too: the 4:3 picture, no gutters
+#  output-bilinear            `output_filter=bilinear`
+# They run the recording of battle-report and have references of their own.
+for _v in ("us", "eu"):
+    _r = by_name()[f"{_v}-battle-report"]
+    for _suffix, _word, _extra, _what in (
+            ("output-sharp-bilinear", "sharp", (), "widescreen"),
+            ("output-sharp-bilinear-43", "sharp", (("widescreen", "0"),), "4:3"),
+            ("output-bilinear", "bilinear", (), "widescreen")):
+        _add(dataclasses.replace(
+            _r, name=f"{_v}-{_suffix}", cfg=_r.cfg + (("output_filter", _word),) + _extra,
+            env=_r.env + (("DW3_PC_WINDOW", "1200x900"),),
+            expect_log=_r.expect_log + ((0, r"dw3-title-overlay: test window set to 1200x900 pixels"),
+                                        (0, r"dw3-present: output filter %s" % _word)),
+            # the report's "no 4:3 gutter" check is about widescreen; the 4:3 run has none by design
+            forbid_log=(_r.forbid_log if not _extra else ()) + ((0, r"output filter \S+ is not supported"),),
+            own_refs=(), ref_from="",
+            note=f"Options > Display > Output filter = {_word} ({_what}) on the battle report in a 1200x900 window "
+                 f"(a non-integer stretch): the window grab differs from battle-report's, the PS1 frame does not"))
+
+# The same on the Switch build in Ryubing (tier "nx", log only: the replay NRO built with
+# DW3_NX_TEST_ENV="DW3_START_MODE=0x233,DW3_PROGRESS=6", like the spiral): the field (the opaque
+# program) and the battle (the mesh blit and the overlay program) with `output_filter=sharp`, so the
+# filtered GLES programs are compiled and run by the console's own driver stack. Log proof only.
+for _v, _ids in (("us", (0x158, 0x159)), ("eu", (0x166, 0x167))):
+    _field, _fight = _ids
+    _add(Scenario(f"{_v}-output-sharp-nx", _v, "nx", timeout=900,
+                  phases=(f"{_v}-ws-battle-spiral",),
+                  cfg=(("widescreen", "1"), ("output_filter", "sharp")),
+                  expect_restore=((_field, M), (_fight, M)),
+                  expect_log=((0, r"dw3-present: output filter sharp(?s:.*)"
+                                  r"dw3-present: output filter sharp scale \d+\.\d+x\d+\.\d+ \(\d+x\d+ texels on \d+x\d+\), prescale \dx\d"),),
+                  forbid_log=((0, r"output filter \S+ is not available"), (0, r"nx_gpu: shader \d+ failed"),
+                              (0, r"nx_mesh: shader compile failed"), (0, r"output filter programs failed")),
+                  note="Switch build: Output filter = Sharp bilinear through a field and a battle, the filtered GLES programs on the console's driver"))

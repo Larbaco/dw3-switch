@@ -3,6 +3,7 @@
 #include "nx_mesh.h"
 #include "nx_mesh_debug.h"
 #include "nx_res.h"
+#include "nx_output_filter.h"
 #include "nx_res_probe.h"
 #include "nx_vram_pack.h"
 #ifdef DW3_NX_GAME_IMAGE
@@ -120,6 +121,15 @@ static GLint s_blit_uv1 = -1;
 static GLint s_blit_tex = -1;
 static GLint s_blit_pos = -1;
 static GLint s_blit_t = -1;
+/* Output filter (nx_output_filter.h): the blit program with a bilinear or sharp
+ * lookup, built the first time a filter is wanted (battle only). */
+static GLuint s_blit_prog_f;
+static GLint s_blit_f_uv0 = -1;
+static GLint s_blit_f_uv1 = -1;
+static GLint s_blit_f_tex = -1;
+static GLint s_blit_f_flt = -1;
+static int s_blit_f_failed;
+static int s_out_filter; /* DW3_NX_FILTER_* for the next dw3_nx_mesh_present */
 
 static Dw3NxMeshVertex s_vtx[MESH_MAX_VTX];
 static uint16_t s_idx[MESH_MAX_IDX];
@@ -372,6 +382,11 @@ static void destroy_gl(void) {
         glDeleteProgram(s_blit_prog);
         s_blit_prog = 0;
     }
+    if (s_blit_prog_f) {
+        glDeleteProgram(s_blit_prog_f);
+        s_blit_prog_f = 0;
+    }
+    s_blit_f_failed = 0;
     if (s_vbo) {
         glDeleteBuffers(1, &s_vbo);
         s_vbo = 0;
@@ -1296,9 +1311,28 @@ bool dw3_nx_mesh_has_content(void) { return content_now(); }
 
 uint64_t dw3_nx_mesh_prims_flushed(void) { return s_prims_flushed; }
 
+void dw3_nx_mesh_set_filter(int mode) {
+    s_out_filter = mode;
+    if (mode != DW3_NX_FILTER_NEAREST && s_ready && !s_blit_prog_f &&
+        !s_blit_f_failed) {
+        s_blit_prog_f = link_program(BLIT_VS, DW3_NX_MESH_BLIT_FS_F);
+        if (!s_blit_prog_f) {
+            s_blit_f_failed = 1;
+            fprintf(stderr, "nx_mesh: the output filter blit failed to build; "
+                            "the battle picture stays on nearest\n");
+            return;
+        }
+        s_blit_f_uv0 = glGetUniformLocation(s_blit_prog_f, "u_uv0");
+        s_blit_f_uv1 = glGetUniformLocation(s_blit_prog_f, "u_uv1");
+        s_blit_f_tex = glGetUniformLocation(s_blit_prog_f, "u_tex");
+        s_blit_f_flt = glGetUniformLocation(s_blit_prog_f, "u_flt");
+    }
+}
+
 void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
                          int vh) {
     GLuint tex = s_mesh_tex;
+    const bool filtered = s_out_filter != DW3_NX_FILTER_NEAREST && s_blit_prog_f;
 
     if (!s_ready || !content_now() || dw <= 0 || dh <= 0 || vw <= 0 || vh <= 0) {
         return;
@@ -1324,12 +1358,17 @@ void dw3_nx_mesh_present(int dx, int dy, int dw, int dh, int vx, int vy, int vw,
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_BLEND);
     glViewport(vx, vy, vw, vh);
-    glUseProgram(s_blit_prog);
-    glUniform2f(s_blit_uv0, (float)dx / (float)DW3_NX_VRAM_W,
+    glUseProgram(filtered ? s_blit_prog_f : s_blit_prog);
+    glUniform2f(filtered ? s_blit_f_uv0 : s_blit_uv0,
+                (float)dx / (float)DW3_NX_VRAM_W,
                 (float)dy / (float)DW3_NX_VRAM_H);
-    glUniform2f(s_blit_uv1, (float)(dx + dw) / (float)DW3_NX_VRAM_W,
+    glUniform2f(filtered ? s_blit_f_uv1 : s_blit_uv1,
+                (float)(dx + dw) / (float)DW3_NX_VRAM_W,
                 (float)(dy + dh) / (float)DW3_NX_VRAM_H);
-    glUniform1i(s_blit_tex, 0);
+    if (filtered) {
+        glUniform3f(s_blit_f_flt, (float)s_out_filter, (float)vw, (float)vh);
+    }
+    glUniform1i(filtered ? s_blit_f_tex : s_blit_tex, 0);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
     glBindBuffer(GL_ARRAY_BUFFER, s_blit_vbo);

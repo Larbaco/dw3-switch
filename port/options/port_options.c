@@ -66,7 +66,7 @@
  * port_options.h: port/pacing/pacing.c, port/battle_menu/battle_menu_memory.c
  * and port/autosave/autosave.c read them. */
 enum {
-    DW3_PORT_OPT_COUNT = 32,
+    DW3_PORT_OPT_COUNT = 33,
     DW3_PORT_OPT_WIDESCREEN = 0,
     DW3_PORT_OPT_FAST_FORWARD = 1,
     DW3_PORT_OPT_RESTART = 2,
@@ -93,7 +93,7 @@ _Static_assert(DW3_PORT_OPT_WIDESCREEN == 0 && DW3_PORT_OPT_FAST_FORWARD == 1 &&
                DW3_PORT_OPT_MAP_BUTTONS == 26 && DW3_PORT_OPT_MENU_EXIT == 27 &&
                DW3_PORT_OPT_MAP_SCALER == 28 && DW3_PORT_OPT_TEXT_LANGUAGE == 29 &&
                DW3_PORT_OPT_INTERNAL_RES == 30 && DW3_PORT_OPT_INTERNAL_RES_TURBO == 31 &&
-               DW3_PORT_OPT_COUNT == 32,
+               DW3_PORT_OPT_OUTPUT_FILTER == 32 && DW3_PORT_OPT_COUNT == 33,
                "registry indexes changed: update port_options_groups.h");
 
 typedef struct Dw3PortOptStub {
@@ -225,11 +225,34 @@ static Dw3PortOptStub g_stubs[DW3_PORT_OPT_COUNT] = {
      * Switch skips the mesh frames it never shows), then returns to the chosen
      * resolution. DW3_INTERNAL_RES_TURBO=0|1 pins it for one run. */
     {"Native res while turbo", "internal_res_turbo", 1, 1, "DW3_INTERNAL_RES_TURBO"},
+    /* Display: how the 2D picture is stretched to the screen (docs/OUTPUT_FILTER.md).
+     * The file holds a word (output_filter=nearest|bilinear|sharp); the stored value
+     * is a DW3_OUTFILTER_*. Default Nearest, the look the port always had. Read at
+     * every present, so a change shows at once. DW3_OUTPUT_FILTER (0 nearest, 1 bilinear,
+     * 2 sharp) pins it for one run: the replay runner pins every scenario that does not
+     * set output_filter itself to 0, so a later change of the default moves no reference. */
+    {"Output filter", "output_filter", DW3_OUTFILTER_DEFAULT, DW3_OUTFILTER_DEFAULT,
+     "DW3_OUTPUT_FILTER"},
 };
 
 /* D5: the words of the Map scaler row in port_options.cfg, by stored value. */
 static const char *const g_mapscaler_word[DW3_MAPSCALER_COUNT] = {
     "nearest", "sharp", "lanczos2", "fsr1", "bilinear"};
+
+/* The words of the Output filter row in port_options.cfg, by stored value. */
+static const char *const g_outfilter_word[DW3_OUTFILTER_COUNT] = {
+    "nearest", "bilinear", "sharp"};
+
+static int po_outfilter_parse(const char *v) {
+    int i;
+
+    for (i = 0; i < DW3_OUTFILTER_COUNT; i++) {
+        if (v != NULL && strcmp(v, g_outfilter_word[i]) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
 
 static int po_mapscaler_parse(const char *v) {
     int i;
@@ -661,7 +684,8 @@ static int po_is_mode(int index) {
            index == DW3_PORT_OPT_STAGE_SWEEP ||
            index == DW3_PORT_OPT_MAP_SCALER ||
            index == DW3_PORT_OPT_TEXT_LANGUAGE ||
-           index == DW3_PORT_OPT_INTERNAL_RES;
+           index == DW3_PORT_OPT_INTERNAL_RES ||
+           index == DW3_PORT_OPT_OUTPUT_FILTER;
 }
 
 /* Rows that Left / Right step and Confirm cycles: the volumes and the modes. */
@@ -681,6 +705,7 @@ static int po_value_max(int index) {
            : index == DW3_PORT_OPT_MAP_SCALER ? DW3_MAPSCALER_COUNT - 1
            : index == DW3_PORT_OPT_TEXT_LANGUAGE ? DW3_TEXTLANG_COUNT - 1
            : index == DW3_PORT_OPT_INTERNAL_RES ? DW3_INTERNAL_RES_COUNT - 1
+           : index == DW3_PORT_OPT_OUTPUT_FILTER ? DW3_OUTFILTER_COUNT - 1
                                                    : DW3_PACING_MODE_MAX;
 }
 
@@ -979,6 +1004,10 @@ static int po_save(void) {
                                           ? out[i] : DW3_MAPSCALER_DEFAULT]);
         } else if (i == DW3_PORT_OPT_TEXT_LANGUAGE) {
             snprintf(num, sizeof(num), "%s", dw3_textlang_word(out[i]));
+        } else if (i == DW3_PORT_OPT_OUTPUT_FILTER) {
+            snprintf(num, sizeof(num), "%s",
+                     g_outfilter_word[out[i] >= 0 && out[i] < DW3_OUTFILTER_COUNT
+                                          ? out[i] : DW3_OUTFILTER_DEFAULT]);
         } else {
             snprintf(num, sizeof(num), "%d", out[i]);
         }
@@ -1070,6 +1099,7 @@ int dw3_port_options_file_int(const char *key, int def) {
     for (i = 0; i < DW3_PORT_OPT_COUNT; i++) {
         if (g_stubs[i].key != NULL && i != DW3_PORT_OPT_BUTTON_LAYOUT &&
             i != DW3_PORT_OPT_MAP_SCALER && i != DW3_PORT_OPT_TEXT_LANGUAGE &&
+            i != DW3_PORT_OPT_OUTPUT_FILTER &&
             strcmp(g_stubs[i].key, key) == 0) {
             return g_stubs[i].value;
         }
@@ -1279,6 +1309,18 @@ int dw3_port_options_persist_init(const char *dir) {
                 layout_from_cfg = 1;
                 continue;
             }
+            if (i == DW3_PORT_OPT_OUTPUT_FILTER) {
+                n = po_outfilter_parse(v);
+                if (n < 0) {
+                    PO_WARN("dw3-options: %s=%s is not valid; using default %s",
+                            g_stubs[i].key, v,
+                            g_outfilter_word[g_stubs[i].def]);
+                    bad++;
+                    continue;
+                }
+                g_stubs[i].value = n;
+                continue;
+            }
             if (i == DW3_PORT_OPT_MAP_SCALER) {
                 n = po_mapscaler_parse(v);
                 if (n < 0) {
@@ -1335,7 +1377,7 @@ int dw3_port_options_persist_init(const char *dir) {
     PO_INFO("dw3-options: file keys items_equip_from_items=%d items_equip_stays=%d items_bag_view=%d items_use_stays=%d items_partner_switch=%d "
             "map_screen=%d battle_menu_memory=%d show_version=%d map_mod=%d save_store=%d "
             "stage_sweep=%d stage_sweep_frames=%d menu_instant_exit=%d map_scaler=%s "
-            "internal_res=%d internal_res_turbo=%d",
+            "internal_res=%d internal_res_turbo=%d output_filter=%s",
             dw3_port_options_file_int("items_equip_from_items", 1),
             dw3_port_options_file_int("items_equip_stays", 1),
             dw3_port_options_file_int("items_bag_view", 1),
@@ -1351,7 +1393,8 @@ int dw3_port_options_persist_init(const char *dir) {
             g_stubs[DW3_PORT_OPT_MENU_EXIT].value,
             g_mapscaler_word[g_stubs[DW3_PORT_OPT_MAP_SCALER].value],
             g_stubs[DW3_PORT_OPT_INTERNAL_RES].value,
-            g_stubs[DW3_PORT_OPT_INTERNAL_RES_TURBO].value);
+            g_stubs[DW3_PORT_OPT_INTERNAL_RES_TURBO].value,
+            g_outfilter_word[g_stubs[DW3_PORT_OPT_OUTPUT_FILTER].value]);
 #if defined(DW3_TITLE_NATIVE_OVERLAY)
     /* P6.37: the port version in the title's corner (docs/P6.37_VERSION.md). */
     dw3_pc_title_overlay_set_version(dw3_port_options_file_int("show_version", 1) != 0);
@@ -1400,6 +1443,8 @@ static const char *po_mode_name(int index, int v) {
         "nearest", "sharp bilinear", "lanczos2", "fsr 1", "bilinear"};
     static const char *const ires[DW3_INTERNAL_RES_COUNT] = {"1x", "2x", "3x"};
     static const char *const textlang[DW3_TEXTLANG_COUNT] = {"original", "ptbr"};
+    static const char *const ofilter[DW3_OUTFILTER_COUNT] = {
+        "nearest", "bilinear", "sharp bilinear"};
 
     if (v < 0 || v > po_value_max(index)) {
         return "?";
@@ -1408,6 +1453,7 @@ static const char *po_mode_name(int index, int v) {
            : index == DW3_PORT_OPT_MAP_SCALER ? scaler[v]
            : index == DW3_PORT_OPT_INTERNAL_RES ? ires[v]
            : index == DW3_PORT_OPT_TEXT_LANGUAGE ? textlang[v]
+           : index == DW3_PORT_OPT_OUTPUT_FILTER ? ofilter[v]
            : index == DW3_PORT_OPT_ENCOUNTER_RATE ? encounter[v]
            : index == DW3_PORT_OPT_BUTTON_LAYOUT ? layout[v]
            : index == DW3_PORT_OPT_REGION ? region[v]
@@ -1503,6 +1549,7 @@ static void po_step(int index, int delta) {
                 : index == DW3_PORT_OPT_MAP_SCALER ? "map scaler"
                 : index == DW3_PORT_OPT_INTERNAL_RES ? "internal resolution"
                 : index == DW3_PORT_OPT_TEXT_LANGUAGE ? "text language"
+                : index == DW3_PORT_OPT_OUTPUT_FILTER ? "output filter"
                                                     : "text speed",
                 po_mode_name(index, v));
     }

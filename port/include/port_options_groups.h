@@ -84,11 +84,11 @@ typedef struct Dw3OptGroup {
  * action row of Controls). Instant menu exit (27, Menus, patch 0200) and, from D5,
  * Map scaler (28, Display, third row) come after them, then P6.7's Text language
  * (29, Display, last row), then P6.11's Internal resolution (30) and Native res while turbo (31),
- * the Display group's second and third rows. Restart hotkey (2) moved to
+ * the Display group's second and third rows, then Output filter (32, Display, right after Map scaler). Restart hotkey (2) moved to
  * Controls and Region at start (10) to Saves; their numbers and cfg keys did not change.
  * The rows are listed here in screen order. */
 static const Dw3OptGroup dw3_optgroups[DW3_OPTGRP_COUNT] = {
-    /* Display  */ {1, 8, {0, 30, 31, 15, 28, 22, 21, 29}}, /* Text language (P6.7) stays last */
+    /* Display  */ {1, 9, {0, 30, 31, 15, 28, 32, 22, 21, 29}}, /* Text language (P6.7) stays last */
     /* Sound    */ {1, 3, {3, 4, 13}},
     /* Gameplay */ {1, 4, {1, 5, 6, 7}},
 #if DW3_OPT_REGION_ROW
