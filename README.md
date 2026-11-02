@@ -213,8 +213,8 @@ no game data.
 user and per region. See [Saves](docs/PLAYER_GUIDE.md#saves).
 
 **Which version am I running?** A dim line under the Options screens and in
-the title's bottom right corner, such as `dw3-switch v0.9.0-preview.1
-(962462d) US`. It is also the first line of `dw3.log`.
+the title's bottom right corner, such as `dw3-switch v0.9.0-preview.2
+US`. It is also the first line of `dw3.log`.
 
 ## For developers
 

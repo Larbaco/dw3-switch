@@ -1,49 +1,49 @@
-Digimon World 3 / 2003 for Switch (homebrew) - v0.9.0-preview.1
+Digimon World 3 / 2003 for Switch (homebrew) - v0.9.0-preview.2
 
-First preview of the 0.9.0 series (SemVer tags). Options are regrouped, the
-pause menus exit at once, and the title waits for the game before PRESS START.
-Preview: unfinished, and not every new item has been run on a console yet.
+Second preview of the 0.9.0 series: Brazilian Portuguese, a 3D resolution
+option, a sharper picture filter and a crash fix. Preview: unfinished, and
+the new items have not all been run on a console yet.
 
 ## Highlights
 
-- Options is regrouped: a new Menus group, Map buttons under Controls, Shared
-  saves (experimental) under Saves, and Version label and Map mod pack under Display.
-- Instant menu exit: leaving the pause menus (Items, Map...) no longer plays the
-  dissolve. Options > Menus, ON by default.
-- PRESS START appears only when the game is ready to take it.
-- The walkthrough is condensed into fuller pages, with corrected steps.
-- Version numbers are now 0.9.0-preview.N (the title corner shows them).
+- Brazilian Portuguese: Options > Display > Text language. The port's own
+  screens (Options, Help, Walkthrough, title) are in Portuguese with no extra
+  files. The game's own text needs a local text pack (not included, EU only for
+  now) at sdmc:/switch/dw3/eu/l10n/ptbr/; see docs/LOCALIZATION.md.
+- Internal resolution (Options > Display): renders the battle 3D at 2x or 3x.
+  On Switch it is capped at 2x for now.
+- Native res while turbo (Options > Display): fast-forward drops to normal
+  resolution and returns to your choice afterwards. ON by default.
+- Output filter (Options > Display): Nearest, Bilinear or Sharp bilinear
+  for the stretch to your screen. Nearest stays the default.
+- The Options background scrolls like the Items menu.
 
 ## Fixed
 
-- On US with the Nintendo layout and Switch glyphs, the Load and Save prompt showed X instead of A (BUG-4).
-- Quitting when started from Sphaira could end in a crash report; the relaunch
-  into the other region is hardened too (BUG-1, BUG-p57-1).
-- The name box on the map view had an artefact on its border (OBS-3).
-- Boot no longer writes [E] error lines to dw3.log (OBS-7).
-- The title's version label is short and sits at the picture edge.
-- Walkthrough: the East Station route (ch01) and the Digi-Egg step (ch04) text is corrected.
+- Quitting with an nxlink host connected could end in a crash report.
 
 ## Changed
 
-- The Restart hotkey moved to Options > Controls.
-- Region at start moved to Options > Saves (combined .nro only).
-- Instant menu exit is ON by default. The fold of the panels still plays.
-- cfg keys are unchanged; your port_options.cfg keeps working.
+- Nintendo button layout and Switch glyphs are now the default (a saved
+  setting moves once; a custom layout is kept).
+- Map scaler default is FSR 1.
+- One port_options.cfg for both regions; the old us/eu files are merged once
+  and backed up as .bak.
 
 ## Known issues
 
-- Quitting from Sphaira, or restarting into the other region, may still show a
-  crash report: the fix is in but not yet run on a console.
-- Checked on PC only so far: PRESS START timing, the US Load prompt glyph,
-  the map name box border and the clean boot log.
-- The walkthrough's FR, DE, IT and ES text is machine-drafted and not yet checked by a native reader.
+- The Portuguese wording is an AI draft, not yet reviewed. The text pack is EU only.
+- Internal resolution: handheld 2x did not hold 60 fps in 95% of battle
+  windows in the first OLED measurement, 3x is slower. The 2x cap and the
+  docked limit are not final; the OLED measurement is pending.
+- The nxlink quit fix is not yet confirmed on the OLED. Quitting through Sphaira or a
+  region restart may still show a crash report.
 - The opening movie runs at about 15 fps.
 
 ## Install / update
 
-Copy dw3-switch.nro to sdmc:/switch/ and start it from your launcher. Coming from
-an older preview, delete the old -eu / -both / -nxlink .nro files. Saves stay.
+Copy dw3-switch.nro to sdmc:/switch/ and start it from your launcher. Saves and
+region folders stay; your settings are migrated on the first start.
 You need your own disc image (US SLUS-01436 or EU SLES-03936). Setup, controls
 and crash reports: https://github.com/Larbaco/dw3-switch/blob/main/docs/PLAYER_GUIDE.md
 
@@ -55,8 +55,8 @@ and crash reports: https://github.com/Larbaco/dw3-switch/blob/main/docs/PLAYER_G
 
 ## Full changes
 
-https://github.com/Larbaco/dw3-switch/compare/v0.6.5-preview.57...v0.9.0-preview.1
-PRs: #391 #394 #395 #396 #397 #402 #403 #404 #405 #406
+https://github.com/Larbaco/dw3-switch/compare/v0.9.0-preview.1...v0.9.0-preview.2
+PRs: #408 #410 #412 #413 #414 #416 #417 #418 #419 #420
 
 No game files are included: bring your own disc. Unofficial fan project, not
 affiliated with Bandai Namco or Nintendo. Digimon is a trademark of its owners.
