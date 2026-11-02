@@ -221,7 +221,21 @@ static void dw3_nxlink_stdio_shutdown(void) {
         dw3_nx_log_stderr_detach();
     }
     if (g_nxlink_fd >= 0) {
-        close(g_nxlink_fd);
+        /* BUG-R0-2: nxlinkStdio() dup2'd the socket onto fd 1 and fd 2, so the
+         * socket handle has three references (fd 1, 2 and g_nxlink_fd). Closing
+         * only g_nxlink_fd left two, and socketExit() below unregisters the
+         * socket device; exit() then fclose()s stdout and stderr, the last
+         * close_r ran through the now-NULL devoptab_list slot and the process
+         * faulted in _close_r (far=0x18) after "leaving to the loader". Drop
+         * all three references while the device still exists; the later
+         * fclose(stdout/stderr) in exit() then gets EBADF and does nothing. */
+        const int rc1 = close(STDOUT_FILENO);
+        const int rc2 = close(STDERR_FILENO);
+        const int fd = g_nxlink_fd;
+        const int rc3 = close(fd);
+
+        INFOF("dw3-exit: nxlink stdio released before socketExit: close(1)=%d "
+              "close(2)=%d close(%d)=%d (0 = ok)", rc1, rc2, fd, rc3);
         g_nxlink_fd = -1;
     }
     if (g_nxlink_socket_initialized) {
