@@ -13,6 +13,7 @@
 #include "port_help.h"
 #include "port_walkthrough_ui.h"
 #include "port_options_cfg.h"
+#include "../memcard/port_stderr.h"
 #include "port_options_groups.h"
 #include "port_internal_res.h"
 #include "port_l10n.h"
@@ -32,8 +33,8 @@
 #include <time.h>
 
 #ifdef DW3_PORT_OPTIONS_TEST
-#define PO_INFO(...) fprintf(stderr, __VA_ARGS__)
-#define PO_WARN(...) fprintf(stderr, __VA_ARGS__)
+#define PO_INFO(...) DW3_STDERRF(__VA_ARGS__)
+#define PO_WARN(...) DW3_STDERRF(__VA_ARGS__)
 #else
 #include <psyz/log.h>
 /* psyz_log, not stderr: on Switch stderr only reaches nxlink, and the load
@@ -505,7 +506,7 @@ static void po_watch_report(const char *why) {
         return;
     }
     g_watch_logged = 1;
-    fprintf(stderr, "dw3-port-options: longest frame gap %.1f ms (frame %d of "
+    DW3_STDERRF("dw3-port-options: longest frame gap %.1f ms (frame %d of "
             "the first %d after open; %s)\n", g_max_gap_ms, g_max_gap_frame,
             g_open_frames, why);
 }
@@ -515,7 +516,7 @@ void dw3_port_options_note_shown(void) {
         return;
     }
     g_shown_logged = 1;
-    fprintf(stderr, "dw3-port-options: first frame shown %.1f ms after the open "
+    DW3_STDERRF("dw3-port-options: first frame shown %.1f ms after the open "
             "request (%s, tick %d)\n", po_now_ms() - g_open_ms,
             g_in_game ? "in game" : "title", g_open_frames);
 }
@@ -542,10 +543,10 @@ static void po_open(int in_game) {
 #endif
     po_push_view();
     if (in_game) {
-        fprintf(stderr, "dw3-port-options: open in game (%s; "
+        DW3_STDERRF("dw3-port-options: open in game (%s; "
                         "widescreen and cheats locked)\n", g_where);
     } else {
-        fprintf(stderr, "dw3-port-options: open (stay MODE_TITLE)\n");
+        DW3_STDERRF("dw3-port-options: open (stay MODE_TITLE)\n");
     }
     {
         /* P51 item 5: the Cheats group is always on the list; say what the
@@ -553,7 +554,7 @@ static void po_open(int in_game) {
         int ids[DW3_OPTGRP_COUNT];
         int n = dw3_optgroups_visible(DW3_OPTGRP_CHEATS_LISTED, ids);
 
-        fprintf(stderr, "dw3-port-options: group list n=%d (cheats %s, master %s, "
+        DW3_STDERRF("dw3-port-options: group list n=%d (cheats %s, master %s, "
                         "locked in game %d)\n", n,
                 DW3_OPTGRP_CHEATS_LISTED ? "listed" : "not built",
                 po_cheats_on() ? "on" : "off", in_game ? 1 : 0);
@@ -581,15 +582,15 @@ void dw3_port_options_close(void) {
     }
     po_watch_report("closed");
     po_help_shutdown();
-    fprintf(stderr, "dw3-port-options: open for %.0f ms\n",
+    DW3_STDERRF("dw3-port-options: open for %.0f ms\n",
             po_now_ms() - g_open_ms);
     g_open = 0;
     g_open_frames = 0;
     if (g_in_game) {
         g_in_game = 0;
-        fprintf(stderr, "dw3-port-options: close in game (back to %s)\n", g_back);
+        DW3_STDERRF("dw3-port-options: close in game (back to %s)\n", g_back);
     } else {
-        fprintf(stderr, "dw3-port-options: close (resume runOptions)\n");
+        DW3_STDERRF("dw3-port-options: close (resume runOptions)\n");
     }
     fflush(stderr);
     dw3_port_options_flush();
@@ -1193,7 +1194,7 @@ static int po_defaults_migrate(char *msg, size_t cap) {
 static void po_global_log(void *ud, int warn, const char *line) {
     (void)ud;
 #ifdef DW3_PORT_OPTIONS_TEST
-    fprintf(stderr, "%s\n", line);
+    DW3_STDERRF("%s\n", line);
     (void)warn;
 #else
     if (warn) {
@@ -1478,7 +1479,7 @@ static void po_sound(int kind) {
     static const char *const name[3] = {"cursor", "select", "cancel"};
 #ifdef DW3_PORT_OPTIONS_TEST
     g_test_sounds[kind]++;
-    fprintf(stderr, "dw3-port-options: sound %s (sfx volume %d)\n", name[kind],
+    DW3_STDERRF("dw3-port-options: sound %s (sfx volume %d)\n", name[kind],
             g_stubs[DW3_PORT_OPT_SFX_VOLUME].value);
     fflush(stderr);
 #else
@@ -1502,7 +1503,7 @@ static int po_refuse_locked(int index) {
     if (!dw3_port_options_row_locked(index)) {
         return 0;
     }
-    fprintf(stderr, "dw3-port-options: %s is locked in game "
+    DW3_STDERRF("dw3-port-options: %s is locked in game "
                     "(change it at the title)\n", g_stubs[index].label);
     fflush(stderr);
     return 1;
@@ -1535,11 +1536,11 @@ static void po_step(int index, int delta) {
     g_stubs[index].value = v;
     g_env_pinned &= ~(UINT64_C(1) << index);
     if (po_is_volume(index)) {
-        fprintf(stderr, "dw3-port-options: %s %d\n",
+        DW3_STDERRF("dw3-port-options: %s %d\n",
                 index == DW3_PORT_OPT_MUSIC_VOLUME ? "music volume"
                                                     : "sfx volume", v);
     } else {
-        fprintf(stderr, "dw3-port-options: %s %s\n",
+        DW3_STDERRF("dw3-port-options: %s %s\n",
                 index == DW3_PORT_OPT_ENCOUNTER_RATE ? "encounter rate"
                 : index == DW3_PORT_OPT_BATTLE_MENU ? "battle cursor"
                 : index == DW3_PORT_OPT_BUTTON_LAYOUT ? "button layout"
@@ -1589,7 +1590,7 @@ static void po_custom_open(void) {
     g_group = DW3_OPTGRP_CUSTOM;
     g_cursor = g_scroll = 0;
     g_assign_btn = -1;
-    fprintf(stderr, "dw3-port-options: group open customize (%d row(s), %s)\n",
+    DW3_STDERRF("dw3-port-options: group open customize (%d row(s), %s)\n",
             dw3_optgroups[DW3_OPTGRP_CUSTOM].nrows,
             g_in_game ? "in game" : "title");
     fflush(stderr);
@@ -1597,7 +1598,7 @@ static void po_custom_open(void) {
 }
 
 static void po_custom_back(void) {
-    fprintf(stderr, "dw3-port-options: group close customize (back to "
+    DW3_STDERRF("dw3-port-options: group close customize (back to "
                     "controls)\n");
     fflush(stderr);
     g_assign_btn = -1;
@@ -1628,7 +1629,7 @@ static void po_assign_begin(int button) {
     g_assign_btn = button;
     g_assign_frames = 0;
     dw3_button_map_capture_begin();
-    fprintf(stderr, "dw3-port-options: customize waiting for a button for %s\n",
+    DW3_STDERRF("dw3-port-options: customize waiting for a button for %s\n",
             dw3_button_ps_label(button));
     fflush(stderr);
     po_sound(PO_SND_SELECT);
@@ -1646,7 +1647,7 @@ static void po_assign_tick(void) {
         po_assign(btn, r);
     } else if (r == DW3_CAPTURE_CANCEL || g_assign_frames > PO_ASSIGN_TIMEOUT) {
         g_assign_btn = -1;
-        fprintf(stderr, "dw3-port-options: customize %s cancelled (%s)\n",
+        DW3_STDERRF("dw3-port-options: customize %s cancelled (%s)\n",
                 dw3_button_ps_label(btn),
                 r == DW3_CAPTURE_CANCEL ? "Start / Select" : "timeout");
         fflush(stderr);
@@ -1739,7 +1740,7 @@ static void po_frames_set(int v) {
     }
     g_stubs[DW3_PORT_OPT_SWEEP_FRAMES].value = v;
     g_env_pinned &= ~(UINT64_C(1) << DW3_PORT_OPT_SWEEP_FRAMES);
-    fprintf(stderr, "dw3-port-options: sweep frames %d (next start)\n", v);
+    DW3_STDERRF("dw3-port-options: sweep frames %d (next start)\n", v);
     fflush(stderr);
     (void)po_save();
     po_sound(PO_SND_SELECT);
@@ -1752,7 +1753,7 @@ static void po_mapbtn_open(void) {
     g_level = 1;
     g_group = DW3_OPTGRP_MAPBTN;
     g_cursor = g_scroll = 0;
-    fprintf(stderr, "dw3-port-options: group open mapbtn (%d row(s), %s)\n",
+    DW3_STDERRF("dw3-port-options: group open mapbtn (%d row(s), %s)\n",
             dw3_optgroups[DW3_OPTGRP_MAPBTN].nrows,
             g_in_game ? "in game" : "title");
     fflush(stderr);
@@ -1760,7 +1761,7 @@ static void po_mapbtn_open(void) {
 }
 
 static void po_mapbtn_back(void) {
-    fprintf(stderr, "dw3-port-options: group close mapbtn (back to controls)\n");
+    DW3_STDERRF("dw3-port-options: group close mapbtn (back to controls)\n");
     fflush(stderr);
     g_group = DW3_OPTGRP_CONTROLS;
     g_cursor = 2; /* the Map buttons row */
@@ -1828,9 +1829,9 @@ static void po_toggle(int index) {
         g_stubs[index].value = v;
         g_env_pinned &= ~(UINT64_C(1) << index);
         if (v) {
-            fprintf(stderr, "dw3-port-options: fast-forward %dx (R3)\n", v);
+            DW3_STDERRF("dw3-port-options: fast-forward %dx (R3)\n", v);
         } else {
-            fprintf(stderr, "dw3-port-options: fast-forward off\n");
+            DW3_STDERRF("dw3-port-options: fast-forward off\n");
         }
         fflush(stderr);
         (void)po_save();
@@ -1850,7 +1851,7 @@ static void po_toggle(int index) {
     }
     g_stubs[index].value = v;
     g_env_pinned &= ~(UINT64_C(1) << index);
-    fprintf(stderr, "dw3-port-options: %s %s\n", po_switch_name(index),
+    DW3_STDERRF("dw3-port-options: %s %s\n", po_switch_name(index),
             v ? "enabled" : "disabled");
     fflush(stderr);
     (void)po_save();
@@ -2008,7 +2009,7 @@ static void po_help_present(void) {
 static void po_open_help(void) {
 #ifdef DW3_PORT_OPTIONS_TEST
     g_test_help_open = 1;
-    fprintf(stderr, "dw3-port-options: group open help (test)\n");
+    DW3_STDERRF("dw3-port-options: group open help (test)\n");
     po_sound(PO_SND_SELECT);
 #else
     Dw3HelpConfig c;
@@ -2050,7 +2051,7 @@ static void po_open_help(void) {
 static void po_open_walkthrough(void) {
 #ifdef DW3_PORT_OPTIONS_TEST
     g_test_wt_open = 1;
-    fprintf(stderr, "dw3-port-options: group open walkthrough (test)\n");
+    DW3_STDERRF("dw3-port-options: group open walkthrough (test)\n");
     po_sound(PO_SND_SELECT);
 #else
     Dw3WtConfig c;
@@ -2100,7 +2101,7 @@ static void po_help_shutdown(void) {
 static void po_help_tick(void) {
 #ifdef DW3_PORT_OPTIONS_TEST
     if (po_key_back()) {
-        fprintf(stderr, "dw3-port-options: group close %s (test)\n",
+        DW3_STDERRF("dw3-port-options: group close %s (test)\n",
                 g_test_wt_open ? "walkthrough" : "help");
         g_test_help_open = 0;
         g_test_wt_open = 0;
@@ -2140,12 +2141,12 @@ static void po_help_tick(void) {
 static void po_open_cheats(const char *how) {
     if (g_in_game) {
         /* P9.7: the entry is greyed in game. */
-        fprintf(stderr, "dw3-port-options: cheats are locked in game "
+        DW3_STDERRF("dw3-port-options: cheats are locked in game "
                         "(change them at the title)\n");
         fflush(stderr);
         return;
     }
-    fprintf(stderr, "dw3-port-options: group open cheats (%s)\n", how);
+    DW3_STDERRF("dw3-port-options: group open cheats (%s)\n", how);
     fflush(stderr);
     po_sound(PO_SND_SELECT);
     dw3_cheats_open();
@@ -2175,7 +2176,7 @@ static void po_group_open(int group) {
     g_group = group;
     g_cursor = g_scroll = 0;
     po_sound(PO_SND_SELECT);
-    fprintf(stderr, "dw3-port-options: group open %s (%d row(s), %s)\n",
+    DW3_STDERRF("dw3-port-options: group open %s (%d row(s), %s)\n",
             g_group_names[group], dw3_optgroups[group].nrows,
             g_in_game ? "in game" : "title");
     fflush(stderr);
@@ -2183,7 +2184,7 @@ static void po_group_open(int group) {
 
 /* Back from a group to the list, the cursor on the group that was open. */
 static void po_group_back(void) {
-    fprintf(stderr, "dw3-port-options: group close %s (back to the group "
+    DW3_STDERRF("dw3-port-options: group close %s (back to the group "
                     "list)\n", g_group_names[g_group]);
     fflush(stderr);
     g_level = 0;
@@ -2208,7 +2209,7 @@ static void po_tick_inner(void) {
     }
     if (!g_logged_open && g_open_frames == 1) {
         g_logged_open = 1;
-        fprintf(stderr, "dw3-port-options: shell tick (Select opened)\n");
+        DW3_STDERRF("dw3-port-options: shell tick (Select opened)\n");
         fflush(stderr);
     }
     /* P6.30: the Help screen has the pad while it is open. */
@@ -2369,14 +2370,14 @@ static void dw3_port_options_maybe_fb_dump(void) {
         rgb = Psyz_VideoAllocVramDump(&w, &h);
     }
     if (rgb == NULL || w <= 0 || h <= 0) {
-        fprintf(stderr, "dw3-port-options: FB dump failed\n");
+        DW3_STDERRF("dw3-port-options: FB dump failed\n");
         fflush(stderr);
         return;
     }
     nbytes = (size_t)w * (size_t)h * 3u;
     fp = fopen(path, "wb");
     if (fp == NULL) {
-        fprintf(stderr, "dw3-port-options: cannot write %s\n", path);
+        DW3_STDERRF("dw3-port-options: cannot write %s\n", path);
         fflush(stderr);
         free(rgb);
         return;
@@ -2386,7 +2387,7 @@ static void dw3_port_options_maybe_fb_dump(void) {
     fclose(fp);
     free(rgb);
     dumped = 1;
-    fprintf(stderr, "dw3-port-options: TTB FB dump %dx%d -> %s\n", w, h,
+    DW3_STDERRF("dw3-port-options: TTB FB dump %dx%d -> %s\n", w, h,
             path);
     fflush(stderr);
     if (getenv("DW3_PORT_OPTIONS_QUIT_AFTER_DUMP") != NULL) {

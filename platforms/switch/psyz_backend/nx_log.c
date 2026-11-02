@@ -51,6 +51,8 @@ static Dw3LogRing s_log_ring;
 /* Set once game stderr is routed into psyz_log; psyz_log then must not write
  * stderr itself (it would loop). */
 static volatile int s_stderr_captured;
+/* Set by dw3_nx_log_stderr_detach once nxlink's stdio is torn down. */
+static volatile int s_stderr_detached;
 
 /* "dw3.log" for n == 0, "dw3.<n>.log" otherwise. */
 static void log_path(char *out, size_t cap, int n) {
@@ -388,6 +390,19 @@ void dw3_nx_log_capture_stderr(void) {
     s_stderr_captured = 1;
 }
 
+/* BUG-R0-1: nxlink owned stderr and its socket is now gone. fd 2 has no device
+ * any more, so a stderr write faults in _write_r (far=0x20, the devoptab
+ * write_r slot read through a NULL devoptab). From here on nothing writes
+ * stderr: psyz_log keeps the file and svcOutputDebugString, and DW3_STDERRF
+ * lines are dropped. */
+void dw3_nx_log_stderr_detach(void) {
+    s_stderr_detached = 1;
+}
+
+int dw3_stderr_live(void) {
+    return !s_stderr_detached;
+}
+
 void psyz_log(unsigned int level, const char *file, unsigned int line,
               const char *func, const char *fmt, ...) {
     static const char levels[] = "DIWE";
@@ -426,7 +441,7 @@ void psyz_log(unsigned int level, const char *file, unsigned int line,
         }
         mutexUnlock(&s_log_mutex);
     }
-    if (!s_stderr_captured) {
+    if (!s_stderr_captured && !s_stderr_detached) {
         fwrite(buf, 1, (size_t)len, stderr);
         fflush(stderr);
     }

@@ -212,6 +212,14 @@ static unsigned g_nxlink_host_be; /* network byte order */
 static char g_nxlink_launcher[256];
 
 static void dw3_nxlink_stdio_shutdown(void) {
+    if (g_nxlink_fd >= 0 || g_nxlink_socket_initialized) {
+        /* BUG-R0-1: stdout/stderr are bound to the nxlink socket. Drain them,
+         * then mark stderr dead before the socket goes, so no later log line
+         * (atexit handlers included) writes through a closed fd 2. */
+        fflush(stdout);
+        fflush(stderr);
+        dw3_nx_log_stderr_detach();
+    }
     if (g_nxlink_fd >= 0) {
         close(g_nxlink_fd);
         g_nxlink_fd = -1;

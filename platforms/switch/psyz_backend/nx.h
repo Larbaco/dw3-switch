@@ -78,6 +78,9 @@ void dw3_nx_log_run_header(void);
 /* Route game fprintf(stderr, ...) lines into psyz_log (so into dw3.log). Not
  * used when nxlink owns stderr. */
 void dw3_nx_log_capture_stderr(void);
+/* Call once nxlink's stdio (stdout/stderr on the socket) is about to be torn
+ * down: later stderr writes are skipped, see dw3_stderr_live (port_stderr.h). */
+void dw3_nx_log_stderr_detach(void);
 
 /* P5.4 crash report hooks, both lock-free and allocation-free (the
  * exception handler calls them). dw3_nx_log_crash_append writes one line at

@@ -3,6 +3,7 @@
 #include "memcard_host.h"
 #include "save_convert.h"
 #include "save_store.h"
+#include "port_stderr.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -413,11 +414,11 @@ static int quarantine_bad_flat(int slot) {
     }
     remove(bad);
     if (rename(path, bad) != 0) {
-        fprintf(stderr, "dw3: memcard: cannot quarantine %s -> %s (%s)\n", path,
+        DW3_STDERRF("dw3: memcard: cannot quarantine %s -> %s (%s)\n", path,
                 bad, strerror(errno));
         return -1;
     }
-    fprintf(stderr, "dw3: memcard: quarantined corrupt flat as %s\n", bad);
+    DW3_STDERRF("dw3: memcard: quarantined corrupt flat as %s\n", bad);
     if (name_path(slot, npath, sizeof(npath)) == 0) {
         n = snprintf(nbad, sizeof(nbad), "%s.bad", npath);
         if (n >= 0 && (size_t)n < sizeof(nbad)) {
@@ -543,7 +544,7 @@ static int atomic_write_file(const char *path, const uint8_t *data, size_t len) 
      */
     if (remove(path) != 0 && errno != ENOENT) {
         err = errno;
-        fprintf(stderr, "dw3: memcard atomic_write: remove(%s) failed: %s\n",
+        DW3_STDERRF("dw3: memcard atomic_write: remove(%s) failed: %s\n",
                 path, strerror(err));
         remove(tmp);
         errno = err;
@@ -554,7 +555,7 @@ static int atomic_write_file(const char *path, const uint8_t *data, size_t len) 
     }
     if (rename(tmp, path) != 0) {
         err = errno;
-        fprintf(stderr,
+        DW3_STDERRF(
                 "dw3: memcard atomic_write: rename(%s -> %s) failed: %s "
                 "(keeping .tmp; dest was unlinked)\n",
                 tmp, path, strerror(err));
@@ -563,7 +564,7 @@ static int atomic_write_file(const char *path, const uint8_t *data, size_t len) 
         return -1;
     }
     (void)fault_at(5);
-    fprintf(stderr, "dw3-save: write %s committed (%zu bytes, fsync + rename, "
+    DW3_STDERRF("dw3-save: write %s committed (%zu bytes, fsync + rename, "
             "%llu us)\n", path_base(path), len,
             (unsigned long long)(mono_us() - t_begin));
     return 0;
@@ -600,15 +601,15 @@ static void recover_tmp(const char *path, long want) {
     }
     if (!have_dest && tsz > 0 && (want == 0 || tsz == want) &&
         rename(tmp, path) == 0) {
-        fprintf(stderr, "dw3: memcard: recovered %s from an interrupted write\n",
+        DW3_STDERRF("dw3: memcard: recovered %s from an interrupted write\n",
                 path);
-        fprintf(stderr, "dw3-save: write %s interrupted after the old file "
+        DW3_STDERRF("dw3-save: write %s interrupted after the old file "
                 "was removed; the complete new file was recovered\n",
                 path_base(path));
         return;
     }
-    fprintf(stderr, "dw3: memcard: removed stale %s (%ld bytes)\n", tmp, tsz);
-    fprintf(stderr, "dw3-save: write %s interrupted, previous file %s\n",
+    DW3_STDERRF("dw3: memcard: removed stale %s (%ld bytes)\n", tmp, tsz);
+    DW3_STDERRF("dw3-save: write %s interrupted, previous file %s\n",
             path_base(path), have_dest ? "kept" : "absent (nothing to keep)");
     remove(tmp);
 }
@@ -702,7 +703,7 @@ static int migrate_legacy_mcr(int slot) {
         /* No DW3 product save — leave .mcr untouched (do not rename to .bak). */
         free(img);
         slot_clear_ram(slot);
-        fprintf(stderr,
+        DW3_STDERRF(
                 "dw3: memcard migrate: no DW3 save in %s (left in place)\n",
                 mcr_path);
         return 0;
@@ -721,12 +722,12 @@ static int migrate_legacy_mcr(int slot) {
     n = snprintf(bak_path, sizeof(bak_path), "%s.bak", mcr_path);
     if (n >= 0 && (size_t)n < sizeof(bak_path)) {
         if (rename(mcr_path, bak_path) != 0) {
-            fprintf(stderr,
+            DW3_STDERRF(
                     "dw3: memcard migrate: kept %s (rename to .bak failed: %s)\n",
                     mcr_path, strerror(errno));
         } else {
             dt = mono_us() - t0;
-            fprintf(stderr,
+            DW3_STDERRF(
                     "dw3: memcard migrate slot=%d name=%s -> %s (from %s.bak) "
                     "us=%llu\n",
                     slot, name, flat, memcard_host_legacy_slot_name(slot),
@@ -797,7 +798,7 @@ int memcard_host_setup_cross_import(const char *runtime_root, int own_region,
     int rc = -1;
 
     if (off != NULL && strcmp(off, "0") == 0) {
-        fprintf(stderr, "dw3: memcard cross-import disabled (DW3_CROSS_IMPORT=0)\n");
+        DW3_STDERRF("dw3: memcard cross-import disabled (DW3_CROSS_IMPORT=0)\n");
         return -1;
     }
     if (dir != NULL && dir[0] != '\0') {
@@ -806,7 +807,7 @@ int memcard_host_setup_cross_import(const char *runtime_root, int own_region,
         rc = memcard_host_set_cross_import_sibling(runtime_root, own_region);
     }
     if (rc == 0) {
-        fprintf(stderr, "dw3: memcard cross-import source=%s own=%s\n",
+        DW3_STDERRF("dw3: memcard cross-import source=%s own=%s\n",
                 g_import_dir, region_name(own_region));
     }
     return rc;
@@ -866,7 +867,7 @@ static void cross_import(int slot) {
     }
     if (!file_size_is(fp, (long)SAVE_IMAGE_SIZE)) {
         fclose(fp);
-        fprintf(stderr,
+        DW3_STDERRF(
                 "dw3: memcard cross-import slot=%d skipped: %s is not a "
                 "32 KiB save\n", slot, src_path);
         return;
@@ -885,7 +886,7 @@ static void cross_import(int slot) {
     }
     if (save_convert_image(src, g_slots[slot].data, g_own_region, &rep) != 0 ||
         rep.usable == 0) {
-        fprintf(stderr,
+        DW3_STDERRF(
                 "dw3: memcard cross-import slot=%d skipped: nothing usable in "
                 "%s (not a DW3 card, or only saves this region cannot load)\n",
                 slot, src_path);
@@ -897,21 +898,21 @@ static void cross_import(int slot) {
     g_slots[slot].name[0] = '\0'; /* naked save: any DW3 product name matches */
     g_slots[slot].dirty = 1;
     if (memcard_host_flush(slot) != 0) {
-        fprintf(stderr, "dw3: memcard cross-import slot=%d FAILED to write %s\n",
+        DW3_STDERRF("dw3: memcard cross-import slot=%d FAILED to write %s\n",
                 slot, memcard_host_slot_name(slot));
         slot_clear_ram(slot);
         return;
     }
     for (s = 0; s < SAVE_SLOT_COUNT; s++) {
         if (rep.warn[s] != 0) {
-            fprintf(stderr,
+            DW3_STDERRF(
                     "dw3: memcard cross-import slot=%d save=%d warning: set "
                     "flag bytes with no place in the %s layout were dropped "
                     "from the copy (the original is untouched)\n",
                     slot, s, region_name(g_own_region));
         }
     }
-    fprintf(stderr,
+    DW3_STDERRF(
             "dw3: memcard cross-import slot=%d from=%s to=%s converter=%d "
             "usable=%d converted=%d results=%d,%d,%d src=%s\n",
             slot, region_name(from_region), region_name(g_own_region),
@@ -1038,7 +1039,7 @@ int memcard_host_store_requested(const char *cfgdir) {
                 val = line[11] == '1';
             } else {
                 val = 0;
-                fprintf(stderr,
+                DW3_STDERRF(
                         "dw3-store: save_store=%s is not valid (0 or 1): the store "
                         "stays off\n", line + 11);
             }
@@ -1062,7 +1063,7 @@ int memcard_host_setup_store(const char *cfgdir, const char *profile_dir,
     }
     if (dir == NULL || dir[0] == '\0' ||
         (own_region != SAVE_REGION_US && own_region != SAVE_REGION_EU)) {
-        fprintf(stderr,
+        DW3_STDERRF(
                 "dw3-store: save_store=1 but there is no profile folder (legacy "
                 "or explicit memory card folder): the store stays off\n");
         return -1;
@@ -1077,7 +1078,7 @@ int memcard_host_setup_store(const char *cfgdir, const char *profile_dir,
     }
     g_store.own_region = own_region;
     g_store.requested = 1;
-    fprintf(stderr, "dw3-store: on dir=%s own=%s\n", g_store.dir,
+    DW3_STDERRF("dw3-store: on dir=%s own=%s\n", g_store.dir,
             region_name(own_region));
     return 0;
 }
@@ -1161,11 +1162,11 @@ static int store_backup(int n) {
     }
     if (read_whole(bak, chk, STORE_READ_MAX, &clen) != 1 || clen != len ||
         memcmp(buf, chk, len) != 0) {
-        fprintf(stderr, "dw3-store: backup %s did not read back the same\n",
+        DW3_STDERRF("dw3-store: backup %s did not read back the same\n",
                 path_base(bak));
         goto done;
     }
-    fprintf(stderr, "dw3-store: backup card%d.dw3s -> %s (%zu bytes)\n", n,
+    DW3_STDERRF("dw3-store: backup card%d.dw3s -> %s (%zu bytes)\n", n,
             path_base(bak), len);
     g_store.backed_up[n] = 1;
     rc = 0;
@@ -1242,7 +1243,7 @@ static void store_migrate(void) {
         if (read_whole(spath[i], img[i], MEMCARD_FLAT_SIZE + 1, &len) != 1 ||
             len != MEMCARD_FLAT_SIZE) {
             if (file_exists(spath[i])) {
-                fprintf(stderr,
+                DW3_STDERRF(
                         "dw3-store: migrate skipped %s: not a 32 KiB save (%zu bytes)\n",
                         spath[i], len);
             }
@@ -1266,16 +1267,16 @@ static void store_migrate(void) {
                 continue;
             }
             store_hex_name(src[i].image, s, nm, sizeof(nm));
-            fprintf(stderr,
+            DW3_STDERRF(
                     "dw3-store: migrate %s slot=%d (%s, name %s...): %s",
                     spath[i], s,
                     rep.src_region[i][s] != 0 ? region_name(rep.src_region[i][s]) : "?",
                     nm, import_outcome_name(o));
             if (rep.target[i][s] >= 0) {
-                fprintf(stderr, " -> card%d slot %d", rep.target[i][s] / SAVE_SLOT_COUNT,
+                DW3_STDERRF(" -> card%d slot %d", rep.target[i][s] / SAVE_SLOT_COUNT,
                         rep.target[i][s] % SAVE_SLOT_COUNT);
             }
-            fprintf(stderr, "\n");
+            DW3_STDERRF("\n");
             tl += (size_t)snprintf(text + tl, sizeof(text) - tl,
                                    "source=%s slot=%d result=%s\n", spath[i], s,
                                    import_outcome_name(o));
@@ -1289,12 +1290,12 @@ static void store_migrate(void) {
             continue;
         }
         if (g_store.c[n].exists) {
-            fprintf(stderr,
+            DW3_STDERRF(
                     "dw3-store: migrate: card%d.dw3s already exists, kept as it is\n", n);
             continue;
         }
         if (store_write_card(n, &cards[n]) != 0) {
-            fprintf(stderr,
+            DW3_STDERRF(
                     "dw3-store: migrate FAILED to write card%d.dw3s: the store is "
                     "off this session, imported.txt not written\n", n);
             g_store.usable = 0;
@@ -1304,12 +1305,12 @@ static void store_migrate(void) {
         g_store.c[n].exists = 1;
         g_store.c[n].content = 1;
     }
-    fprintf(stderr,
+    DW3_STDERRF(
             "dw3-store: migration done imported=%d duplicate=%d refused=%d "
             "left_in_legacy=%d (originals untouched)\n",
             rep.imported, rep.duplicates, rep.invalid, rep.leftover);
     if (rep.leftover > 0) {
-        fprintf(stderr,
+        DW3_STDERRF(
                 "dw3-store: migration: %d save(s) did not fit in the 6 slots and "
                 "stay in the legacy folder (see imported.txt)\n", rep.leftover);
     }
@@ -1324,7 +1325,7 @@ static void store_migrate(void) {
         memcpy(full, head, (size_t)hl);
         memcpy(full + hl, text, tl);
         if (atomic_write_file(marker, (const uint8_t *)full, (size_t)hl + tl) != 0) {
-            fprintf(stderr,
+            DW3_STDERRF(
                     "dw3-store: migrate: could not write imported.txt (the import "
                     "runs again next start; existing cards are kept)\n");
         }
@@ -1371,7 +1372,7 @@ static int store_open_once(void) {
         }
         st = rc < 0 ? SAVE_STORE_SHORT : save_store_parse(buf, len, &g_store.c[n].card);
         if (st != SAVE_STORE_OK) {
-            fprintf(stderr,
+            DW3_STDERRF(
                     "dw3-store: card%d.dw3s refused: %s (file left untouched); the "
                     "store is off this session and the flat saves are used\n", n,
                     rc < 0 ? "unreadable" : save_store_status_name(st));
@@ -1380,7 +1381,7 @@ static int store_open_once(void) {
         }
         g_store.c[n].exists = 1;
         g_store.c[n].content = 1;
-        fprintf(stderr, "dw3-store: read card%d.dw3s crc ok last_writer=%s\n", n,
+        DW3_STDERRF("dw3-store: read card%d.dw3s crc ok last_writer=%s\n", n,
                 g_store.c[n].card.last_region == SAVE_REGION_US
                     ? "us"
                     : (g_store.c[n].card.last_region == SAVE_REGION_EU ? "eu" : "?"));
@@ -1414,7 +1415,7 @@ static int store_ensure(int slot) {
         return 1;
     }
     if (save_store_to_native(&sc->card, g_store.own_region, ms->data, &rep) != 0) {
-        fprintf(stderr, "dw3-store: card%d.dw3s has no usable info section: the "
+        DW3_STDERRF("dw3-store: card%d.dw3s has no usable info section: the "
                 "store is off this session\n", slot);
         slot_clear_ram(slot);
         g_store.usable = 0;
@@ -1431,20 +1432,20 @@ static int store_ensure(int slot) {
     memcpy(sc->base, ms->data, SAVE_IMAGE_SIZE);
     ms->name[0] = '\0'; /* any DW3 product name matches (design: name binding) */
     ms->dirty = 0;
-    fprintf(stderr,
+    DW3_STDERRF(
             "dw3-store: open card%d as %s results=%d,%d,%d (0 empty 1 native "
             "2 converted 3 refused: the game shows error 8) usable=%d\n",
             slot, region_name(g_store.own_region), rep.result[0], rep.result[1],
             rep.result[2], rep.usable);
     for (int k = 0; k < SAVE_SLOT_COUNT; k++) {
         if (rep.result[k] == SAVE_SLOT_REFUSED) {
-            fprintf(stderr,
+            DW3_STDERRF(
                     "dw3-store: card%d slot %d needs the EU extra chapter: the %s "
                     "build cannot load it (error 8), the bytes stay untouched in "
                     "the store\n", slot, k, region_name(g_store.own_region));
         }
         if (rep.warn[k] != 0) {
-            fprintf(stderr,
+            DW3_STDERRF(
                     "dw3-store: card%d slot %d warning: set flag bytes with no "
                     "place in the %s layout are not shown (kept in the store)\n",
                     slot, k, region_name(g_store.own_region));
@@ -1477,7 +1478,7 @@ static int store_flush(int slot) {
         /* Between two bursts of one game save (header, info, slot): wait for
          * the rest, nothing is written, the port stays dirty. Said once. */
         if (!sc->deferred_said) {
-            fprintf(stderr, "dw3-store: card%d not settled yet (%s): waiting\n", slot,
+            DW3_STDERRF("dw3-store: card%d not settled yet (%s): waiting\n", slot,
                     rep.reason);
             sc->deferred_said = 1;
         }
@@ -1486,7 +1487,7 @@ static int store_flush(int slot) {
         goto out;
     }
     if (frc != 0) {
-        fprintf(stderr,
+        DW3_STDERRF(
                 "dw3-store: REFUSED to write card%d: %s (nothing written)\n", slot,
                 rep.reason);
         ms->flush_failed = 1;
@@ -1517,7 +1518,7 @@ static int store_flush(int slot) {
         memset(work->meta, 0, sizeof(work->meta));
     }
     if (sc->exists && store_backup(slot) != 0) {
-        fprintf(stderr,
+        DW3_STDERRF(
                 "dw3-store: backup of card%d.dw3s FAILED: not writing (the old file "
                 "is untouched)\n", slot);
         ms->flush_failed = 1;
@@ -1527,7 +1528,7 @@ static int store_flush(int slot) {
         if (store_card_path(slot, path, sizeof(path)) != 0) {
             path[0] = '\0';
         }
-        fprintf(stderr, "dw3-store: write card%d.dw3s FAILED (%s)\n", slot,
+        DW3_STDERRF("dw3-store: write card%d.dw3s FAILED (%s)\n", slot,
                 strerror(errno));
         ms->flush_failed = 1;
         goto out;
@@ -1545,7 +1546,7 @@ static int store_flush(int slot) {
     ms->dirty = 0;
     ms->flush_failed = 0;
     ms->flush_count++;
-    fprintf(stderr,
+    DW3_STDERRF(
             "dw3-store: write card%d by %s slots_changed=%u%u%u header=%d "
             "(canonical EU layout, crc32 %08x)\n", slot,
             region_name(g_store.own_region), (rep.changed >> 0) & 1u,
@@ -1623,7 +1624,7 @@ int memcard_host_format_slot(int slot) {
         /* Never delete: the card file stays; the next save replaces it (after
          * a backup). Until then this port reads as an empty card. */
         g_store.c[slot].formatted = 1;
-        fprintf(stderr,
+        DW3_STDERRF(
                 "dw3-store: card%d formatted by the game: the port is empty, "
                 "card%d.dw3s stays on disk until the next save (then a backup "
                 "is kept)\n", slot, slot);
@@ -1698,7 +1699,7 @@ int memcard_host_flush(int slot) {
     if (g_test_fail_flush > 0) {
         g_test_fail_flush--;
         g_slots[slot].flush_failed = 1;
-        fprintf(stderr, "dw3: memcard flush FAILED slot=%d (test)\n", slot);
+        DW3_STDERRF("dw3: memcard flush FAILED slot=%d (test)\n", slot);
         return -1;
     }
     if (store_slot(slot)) {
@@ -1706,18 +1707,18 @@ int memcard_host_flush(int slot) {
     }
     if (flat_path(slot, path, sizeof(path)) != 0) {
         g_slots[slot].flush_failed = 1;
-        fprintf(stderr, "dw3: memcard flush FAILED slot=%d (bad path)\n", slot);
+        DW3_STDERRF("dw3: memcard flush FAILED slot=%d (bad path)\n", slot);
         return -1;
     }
     if (atomic_write_file(path, g_slots[slot].data, MEMCARD_FLAT_SIZE) != 0) {
         g_slots[slot].flush_failed = 1;
-        fprintf(stderr, "dw3: memcard flush FAILED slot=%d path=%s (%s)\n", slot,
+        DW3_STDERRF("dw3: memcard flush FAILED slot=%d path=%s (%s)\n", slot,
                 path, strerror(errno));
         return -1;
     }
     if (write_name_sidecar(slot) != 0) {
         g_slots[slot].flush_failed = 1;
-        fprintf(stderr,
+        DW3_STDERRF(
                 "dw3: memcard flush FAILED slot=%d (name sidecar) path=%s\n",
                 slot, path);
         return -1;
@@ -1784,7 +1785,7 @@ int memcard_host_ensure(int slot) {
     t0 = mono_us();
     if (load_flat_from_disk(slot) == 0) {
         dt = mono_us() - t0;
-        fprintf(stderr, "dw3: memcard ensure slot=%d flat us=%llu\n", slot,
+        DW3_STDERRF("dw3: memcard ensure slot=%d flat us=%llu\n", slot,
                 (unsigned long long)dt);
         return 0;
     }
@@ -1792,7 +1793,7 @@ int memcard_host_ensure(int slot) {
     if (fp != NULL) {
         fclose(fp);
         /* Wrong size / unreadable: quarantine and fall through to .mcr. */
-        fprintf(stderr,
+        DW3_STDERRF(
                 "dw3: memcard: bad flat %s (wrong size or read error)\n", path);
         (void)quarantine_bad_flat(slot);
         slot_clear_ram(slot);
@@ -1853,9 +1854,9 @@ void memcard_host_abandon_sections(void) {
 
     for (slot = 0; slot < MEMCARD_HOST_ALL; slot++) {
         if (g_slots[slot].section_open) {
-            fprintf(stderr, "dw3: memcard: slot=%d write section unfinished; "
+            DW3_STDERRF("dw3: memcard: slot=%d write section unfinished; "
                     "the card file keeps its previous content\n", slot);
-            fprintf(stderr, "dw3-save: write slot=%d interrupted, previous "
+            DW3_STDERRF("dw3-save: write slot=%d interrupted, previous "
                     "file kept (exit with a save section open)\n", slot);
             g_slots[slot].section_open = 0;
             g_slots[slot].dirty = 0;
