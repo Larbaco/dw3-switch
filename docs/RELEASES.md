@@ -62,6 +62,7 @@ Preview numbers 11 to 17 were never published.
 
 | Release | What it was for |
 |---|---|
+| [0.9.0-preview.2](https://github.com/Larbaco/dw3-switch/releases/tag/v0.9.0-preview.2) | Português (BR) for the port's screens, Internal resolution and Native res while turbo, Output filter, nxlink exit crash fix. |
 | [0.9.0-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.9.0-preview.1) | First of the 0.9.0 series: regrouped Options, instant pause-menu exit, PRESS START only when ready, condensed walkthrough, SemVer numbering. |
 | [preview.57](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.57) | Digivolve in battle no longer crashes; restart in the chosen region; Minus (Select) opens the map from the field; more walkthrough. |
 | [preview.56](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.56) | Fixes the Reliability Spot crash; map view area names and zoom; walkthrough chapters 2 to 10; experimental cross-region saves. |
