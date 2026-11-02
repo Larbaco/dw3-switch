@@ -845,6 +845,24 @@ static bool present_init(void) {
                  "present path: RGBA8888 pack on the CPU (%s)", why);
     }
 
+    {
+        /* What the driver gives `mediump float` in a fragment shader: 10 bits
+         * of mantissa is fp16 (too coarse to address a texel of the 1024 wide
+         * VRAM, the reason the Nearest programs now use highp), 23 is fp32. */
+        GLint range[2] = {0, 0}, med = 0, high = 0;
+
+        glGetShaderPrecisionFormat(GL_FRAGMENT_SHADER, GL_MEDIUM_FLOAT, range,
+                                   &med);
+        glGetShaderPrecisionFormat(GL_FRAGMENT_SHADER, GL_HIGH_FLOAT, range,
+                                   &high);
+        psyz_log(1, "nx_gpu.c", __LINE__, __func__,
+                 "dw3-present: fragment float precision mediump %d bits, "
+                 "highp %d bits (texture coordinates use highp)", (int)med,
+                 (int)high);
+        while (glGetError() != GL_NO_ERROR) {
+        }
+    }
+
     glGenBuffers(1, &s_quad_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, s_quad_vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);

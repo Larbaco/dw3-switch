@@ -32,6 +32,20 @@
 
 /* Include after <GLES3/gl3.h>. */
 
+/* The texture coordinate arithmetic of every Nearest program is highp. mediump
+ * is only 10 bits of mantissa (a driver may run it in fp16, as Mesa llvmpipe
+ * does), which cannot address a texel of a 1024 wide texture: at 4.5x it picked
+ * the neighbouring texel for 8% of the pixels, and up to half of them when the
+ * rectangle sits in the right half of the VRAM. highp float is mandatory in a
+ * GLSL ES 3.00 fragment shader; GLSL ES 1.00 has it only when the driver says so.
+ * On a driver whose mediump is fp32 (Mesa nouveau) nothing changes. */
+#define DW3_NX_P32_PRECISION                                                   \
+    "#ifdef GL_FRAGMENT_PRECISION_HIGH\n"                                      \
+    "precision highp float;\n"                                                 \
+    "#else\n"                                                                  \
+    "precision mediump float;\n"                                               \
+    "#endif\n"
+
 /* The RGBA8888 path (nx_vram_pack.c), GLSL ES 1.00: kept for the ES 2 context,
  * for DW3_PRESENT_16=0 and as the reference the GPU test compares against. */
 static const char *const DW3_NX_P32_VS =
@@ -41,7 +55,7 @@ static const char *const DW3_NX_P32_VS =
     "void main() { v_t = a_t; gl_Position = vec4(a_pos, 0.0, 1.0); }\n";
 
 static const char *const DW3_NX_P32_QUAD_FS =
-    "precision mediump float;\n"
+    DW3_NX_P32_PRECISION
     "varying vec2 v_t;\n"
     "uniform vec2 u_uv0;\n"
     "uniform vec2 u_uv1;\n"
@@ -56,7 +70,7 @@ static const char *const DW3_NX_P32_QUAD_FS =
  * black with bit 15 (alpha, see nx_vram_pack.c) is a drawn pixel, such as a
  * dark mask texel or a pupil, and stays. */
 static const char *const DW3_NX_P32_UI_FS =
-    "precision mediump float;\n"
+    DW3_NX_P32_PRECISION
     "varying vec2 v_t;\n"
     "uniform vec2 u_uv0;\n"
     "uniform vec2 u_uv1;\n"
@@ -79,12 +93,12 @@ static const char *const DW3_NX_P16_VS =
     "out vec2 v_t;\n"
     "void main() { v_t = a_t; gl_Position = vec4(a_pos, 0.0, 1.0); }\n";
 
-/* The coordinate arithmetic keeps the old shaders' `mediump float`, so on any
- * driver (one that runs mediump in fp16 included) the same texel is chosen as
- * before; only the colour work is highp, and that is integer. */
+/* highp float, see DW3_NX_P32_PRECISION: the texel the sampler reads is the one
+ * under the pixel centre whatever the driver does with mediump. The colour work
+ * is integer. */
 #define DW3_NX_P16_FS_HEAD                                                     \
     "#version 300 es\n"                                                        \
-    "precision mediump float;\n"                                               \
+    "precision highp float;\n"                                                 \
     "precision highp int;\n"                                                   \
     "precision highp usampler2D;\n"                                            \
     "in vec2 v_t;\n"                                                           \
