@@ -3905,11 +3905,11 @@ _add(
              forbid_log=_L10N_OFF_BAD,
              note="A half-translated pack: the strings it lacks stay in English (the fallback path)"),
     Scenario("eu-l10n-nopack", "eu", "full", timeout=300, phases=("eu-load-menu",), l10n="none", cfg=_L10N_CFG,
-             ref_from="eu-load-menu",
+             ref_from="eu-load-menu", own_refs=("load-selected",),
              expect_log=((0, r"dw3-l10n: off reason=no_pack"),),
              forbid_log=((0, r"dw3-l10n: off reason=no_pack(?s:.*)dw3-l10n: off reason="),
                          (0, r"dw3-l10n: (override|pack ok)"), (0, r"CRASH|Segmentation fault")),
-             note="text_language=ptbr with no pack: English, exactly one off line, the original pictures"),
+             note="text_language=ptbr with no pack: English game text, exactly one off line; the port's own title plaques are Portuguese (#419, own load-selected reference), every other picture is the original"),
     Scenario("eu-l10n-glyph-proof", "eu", "full", timeout=300, phases=("eu-load-menu",), l10n="proof", cfg=_L10N_CFG,
              expect_log=((0, r"dw3-l10n: pack ok region=eu files=50 strings=13084 translated=\d+ fallback=\d+ "
                              r"src=sha256:[0-9a-f]{16} synthetic=proof(?s:.*)dw3-l10n: glyph proof n=29 "),),
