@@ -441,15 +441,19 @@ static void fill_blocks(int x0, int y0, int w, int h, int blk) {
 typedef struct {
     int rw, rh; /* source rectangle */
     int vw, vh; /* viewport */
+    int fix_rx; /* 0: a random x offset in VRAM; else that one (the right half of
+                 * the VRAM is where an fp16 coordinate is coarsest) */
 } Case;
 
 static const Case cases[] = {
-    {320, 240, 1440, 1080}, /* docked 4:3: 4.5x */
-    {320, 240, 960, 720},   /* handheld 4:3: 3x */
-    {426, 240, 1920, 1080}, /* widescreen docked */
-    {320, 240, 640, 480},   /* 2x */
-    {256, 240, 1152, 1080}, /* 4.5x, narrower mode */
-    {320, 240, 400, 300},   /* under 2x: plain bilinear */
+    {320, 240, 1440, 1080, 0}, /* docked 4:3: 4.5x */
+    {320, 240, 960, 720, 0},   /* handheld 4:3: 3x */
+    {426, 240, 1920, 1080, 0}, /* widescreen docked */
+    {320, 240, 640, 480, 0},   /* 2x */
+    {256, 240, 1152, 1080, 0}, /* 4.5x, narrower mode */
+    {320, 240, 400, 300, 0},   /* under 2x: plain bilinear */
+    {320, 240, 1440, 1080, 640}, /* 4.5x, rectangle in the right half of VRAM */
+    {320, 240, 640, 480, 704},   /* 2x, same */
 };
 
 static void upload16(GLuint tex) {
@@ -477,7 +481,8 @@ static const char *MESH_VS =
 static void test_case(const Case *c, int ci, const Prog *q, const Prog *qf,
                       const Prog *uf, const Prog *mf,
                       const Prog *mn, GLuint t16, GLuint t32) {
-    int rx = 17 + (int)(rnd() % 200), ry = 9 + (int)(rnd() % 100);
+    int rx = c->fix_rx ? c->fix_rx : 17 + (int)(rnd() % 200);
+    int ry = 9 + (int)(rnd() % 100);
     float uv0[2] = {(float)rx / DW3_NX_VRAM_W, (float)ry / DW3_NX_VRAM_H};
     float uv1[2] = {(float)(rx + c->rw) / DW3_NX_VRAM_W,
                     (float)(ry + c->rh) / DW3_NX_VRAM_H};
@@ -549,19 +554,40 @@ static void test_case(const Case *c, int ci, const Prog *q, const Prog *qf,
                 }
             }
             {
-                /* informational: the Nearest program against the ideal one */
+                /* the Nearest program against the ideal one: the same texel
+                 * everywhere except where the pixel centre is exactly on a
+                 * texel edge (4.5x: one pixel in nine), where either neighbour is
+                 * the nearest and float rounding picks one. With `mediump`
+                 * coordinates (fp16 in Mesa llvmpipe) 2 to 50% of the pixels were
+                 * off, whatever the scale. */
                 uint8_t *n;
-                size_t nd = 0;
+                size_t nd = 0, ties = 0;
 
                 clear_sentinel();
                 draw(q, t16, c->vw, c->vh, uv0, uv1, NULL, 0);
                 n = readback(c->vw, c->vh);
                 for (k = 0; k < (size_t)c->vw * c->vh; k++) {
-                    if (memcmp(n + k * 4, ideal + k * 4, 3) != 0) nd++;
+                    int px = (int)(k % (size_t)c->vw), py = (int)(k / (size_t)c->vw);
+                    double ex = s16.x0 + (px + 0.5) / c->vw * (s16.x1 - s16.x0);
+                    double ey = s16.y0 + (py + 0.5) / c->vh * (s16.y1 - s16.y0);
+                    int tie = fabs(ex - floor(ex + 0.5)) < 1e-3 ||
+                              fabs(ey - floor(ey + 0.5)) < 1e-3;
+
+                    if (memcmp(n + k * 4, ideal + k * 4, 3) != 0) {
+                        if (tie) ties++; else nd++;
+                    }
                 }
-                printf("note: the production Nearest program differs from the ideal "
-                       "nearest in %zu of %zu pixels (mediump coordinates)\n", nd,
-                       (size_t)c->vw * c->vh);
+                if (nd) {
+                    g_fail++;
+                    printf("FAIL: the Nearest program picks a neighbouring texel "
+                           "in %zu of %zu pixels (%.2fx, rectangle at x %d)\n", nd,
+                           (size_t)c->vw * c->vh, (double)c->vw / c->rw, rx);
+                } else {
+                    printf("OK: the Nearest program is the ideal nearest at "
+                           "%.2fx (rectangle at x %d; %zu edge-tie pixels differ, "
+                           "either side is nearest)\n", (double)c->vw / c->rw, rx,
+                           ties);
+                }
                 free(n);
             }
             free(ideal);

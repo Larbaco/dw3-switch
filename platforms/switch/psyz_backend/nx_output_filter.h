@@ -85,7 +85,7 @@ static inline const char *dw3_nx_filter_name(int mode) {
 /* The battle mesh target, composited under the CPU layer (nx_mesh.c BLIT_FS). */
 #define DW3_NX_MESH_BLIT_FS_F                                                  \
     "#version 300 es\n"                                                        \
-    "precision mediump float;\n"                                               \
+    "precision highp float;\n"                                               \
     "in vec2 v_t;\n"                                                           \
     "uniform vec2 u_uv0;\n"                                                    \
     "uniform vec2 u_uv1;\n"                                                    \

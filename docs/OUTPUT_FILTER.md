@@ -114,16 +114,35 @@ GPU time of the present: upload, mesh blit, UI draw); rows OF3 and OF4 in the [O
 compare the three values. Estimated from the probe's section 3.3 numbers (docked 1.5 to 2.4 Gfrag/s): a
 2.07 Mpixel draw with about 2.3 taps is well under 1 ms.
 
-## 4. Side finding: the Nearest programs are not an exact nearest
+## 4. Side finding: the Nearest programs were not an exact nearest (fixed)
 
-The existing programs compute the sample position in `mediump float` (deliberately, P6.22 pass 4: "the
-same texel as before") and let the sampler pick the texel. On Mesa llvmpipe the test finds that the Nearest
-program picks the neighbouring texel for **8.3% of the pixels** at 4.5x (6.4% at 3x, 2.1% at 2x) against an
-ideal nearest (the texel under the pixel centre, in double). The filtered programs use `highp` and
-`texelFetch` and are compared with the ideal. The cause was not isolated (`mediump` coordinate arithmetic or
-the sampler's own rounding); whether the Switch driver does the same is not known, the OLED rows say (a
-Nearest picture with uneven 4 / 5 pixel columns is expected from the 4.5x alone). Not changed here: the default
-must stay as it is, and a more exact Nearest would be a separate, replay-visible change.
+The Nearest programs computed the sample position in `mediump float` (kept on purpose by P6.22 pass 4, "the
+same texel as before") and let the sampler pick the texel. #417 found that on Mesa llvmpipe the program picked the
+neighbouring texel for **8.3% of the pixels** at 4.5x (6.4% at 3x, 2.1% at 2x) against an ideal nearest (the texel
+under the pixel centre, in double).
+
+**Cause (isolated 2026-11-01).** `u_uv0 + v_t * (u_uv1 - u_uv0)` in `mediump`. Mesa llvmpipe runs `mediump` in fp16
+(10 bits of mantissa), and a texture coordinate in 0.5 to 1 has a step of 2^-11, which is half a texel of the 1024
+wide VRAM. It is not the sampler (a `texelFetch(floor(...))` with the same `mediump` coordinates gives the identical
+error) and not the UV values: with the arithmetic in `highp` the x axis is exact in every case. The error grows with
+the coordinate, so it depends on where the rectangle sits in the VRAM as much as on the scale: a probe with the
+rectangle 320x240 on the x axis was off for 1.9% of the pixels at x 0, 5.9% at x 123, and 25% (at 4.5x) or **50%**
+(at 2x) at x 512 and beyond, where the step is half a texel. Not a shader logic error: GLSL ES allows exactly this for `mediump`.
+
+**Fix.** The coordinate arithmetic of every Nearest program is `highp` (`nx_present16.h`: the 16-bit programs and,
+under `GL_FRAGMENT_PRECISION_HIGH`, the ES 2 ones; `nx_mesh.c`: the mesh blit and its vertex shader, whose
+`mediump` varying could be stored in fp16 too; `nx_output_filter.h`: the filtered mesh blit's default). highp float
+is mandatory in a GLSL ES 3.00 fragment shader. After it the production Nearest equals the ideal nearest everywhere
+except at pixels whose centre is exactly on a texel edge, which at 4.5x is one pixel in nine per axis: there both
+neighbours are equally nearest and float rounding picks one (the CPU reference does not call them wrong; neither does
+the test, `tools/output_filter_gpu_test.c`, which checks the 4.5x, 3x and 2x cases and two rectangles in the right
+half of VRAM).
+
+**On the Switch.** The console runs Mesa nouveau. As far as the driver source shows it does not enable the fp16
+shader capability (Mesa only lowers `mediump` to fp16 when the screen reports it), so `mediump` is fp32 there and the
+old picture was already the exact one: the fix should change nothing on the console (about 85% sure; not measured). The
+present logs `dw3-present: fragment float precision mediump N bits, highp M bits` once at start-up (10 = fp16, 23 =
+fp32): row OF9 reads it. The uneven 4 / 5 pixel columns of Nearest at 4.5x are the stretch itself, not this.
 
 ## 5. Tests
 
@@ -132,7 +151,9 @@ must stay as it is, and a more exact Nearest would be a separate, replay-visible
   mesh programs at 1440x1080, 960x720, 1920x1080, 640x480, 1152x1080 and 400x300 on a random VRAM with a
   different random around the rectangle (a tap that leaks shows). Every channel within 2 (measured 0.6);
   discarded pixels of the overlay program equal the reference's; Sharp at 3x and 2x is identical to the ideal
-  Nearest; at 4.5x the longest run of pixels off Nearest in a row is 2.
+  Nearest; at 4.5x the longest run of pixels off Nearest in a row is 2. The production Nearest program equals the ideal
+  nearest at 4.5x, 3x and 2x except at exact edge ties (section 4); the rectangle is also placed at x 640 and 704 of
+  the VRAM, where an fp16 coordinate is coarsest.
 * `tools/tests/test_options_persist.py` and `tools/tests/port_options_main.c`: the row, its words, its
   default, a bad word.
 * Replay: `us/eu-output-sharp-bilinear` (widescreen), `-43` (4:3) and `us/eu-output-bilinear`, the battle
@@ -150,6 +171,7 @@ must stay as it is, and a more exact Nearest would be a separate, replay-visible
 | `dw3-present: output filter <name> is not available (<why>); using nearest` | The ES 2 context, `DW3_PRESENT_16=0`, or a program that did not build (Switch); an unsupported renderer (PC) |
 | `dw3-port-options: output filter <name>` | A step of the row |
 | `dw3-options: file keys ... output_filter=<word>` | Boot, with the other file keys |
+| `dw3-present: fragment float precision mediump N bits, highp M bits (texture coordinates use highp)` | Switch, once at start-up (10 bits = fp16, 23 = fp32) |
 
 ## 7. Files
 
