@@ -7,6 +7,7 @@
  * call or memcard_host_shutdown), not on every 128-byte sector.
  */
 #include "memcard_host.h"
+#include "port_stderr.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -284,7 +285,7 @@ long MemCardCreateFile(long chan, char *filename, long blocks) {
     if (memcard_host_create_file(slot, filename) != 0) {
         return McErrBlockFull;
     }
-    fprintf(stderr, "dw3: MemCardCreate file=%s flat=%s\n", filename,
+    DW3_STDERRF("dw3: MemCardCreate file=%s flat=%s\n", filename,
             memcard_host_slot_name(slot));
     return McErrNone;
 }
@@ -298,7 +299,7 @@ long MemCardFormat(long chan) {
     if (memcard_host_format_slot(slot) != 0) {
         return McErrCardInvalid;
     }
-    fprintf(stderr, "dw3: MemCardFormat slot=%d (flat)\n", slot);
+    DW3_STDERRF("dw3: MemCardFormat slot=%d (flat)\n", slot);
     return McErrNone;
 }
 
