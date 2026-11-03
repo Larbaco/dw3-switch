@@ -405,6 +405,8 @@ def verify_pack(pack_dir: Path, runtime: Path | None, region: str | None, decomp
                     problems.append(f"{key}: a line is {max(widths)} px, the {box} box holds {F.LIMITS[box][1]} px")
             for key, over in sorted(stats.speakers):
                 problems.append(f"{key}: the speaker's name is {over} px wider than the name bar")
+            for key, chars in sorted(stats.name_chars):
+                problems.append(f"{key}: the speaker's name has {chars!r}, which the name bar's font cannot draw (it shows a ring)")
     return problems
 
 
@@ -476,7 +478,7 @@ def main(argv=None) -> int:
         print("\n".join(stats.lines("fit: %d rewrapped to fit their box, %d cannot be fitted" % (c["rewrapped"], c["unfit"]))))
         if a.fit_report:
             F.write_report(a.fit_report, stats, changes, "pack %s" % out)
-        left = sum(stats.bad_strings.values()) + len(stats.speakers)
+        left = sum(stats.bad_strings.values()) + len(stats.speakers) + len(stats.name_chars)
         if left:
             print("warning: %d dialogue string(s) still do not fit their box or name bar; they need rewording "
                   "(--fit-report FILE lists them)" % left, file=sys.stderr)
