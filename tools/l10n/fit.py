@@ -141,6 +141,22 @@ def speaker_overflow(raw: bytes, styles: dict[int, T.Metrics]) -> int:
     return max(0, name - box - NAME_BAR_MARGIN_PX)
 
 
+def speaker_missing_chars(raw: bytes, absent: dict[int, tuple[set[int], set[int]]], codec: T.Codec) -> str:
+    """The characters of the speaker's name (style 2) the name bar's font has no cell for, as text. The engine
+    draws one as a ring, so "Aiko, Líder" reads "Aiko0 Líder". A colon at the very end (and spaces after it) is allowed: it draws
+    nothing, and the English names have it ("Junior:")."""
+    head = speaker_split(raw)[0]
+    if not head:
+        return ""
+    name = head[2:-2]
+    colon, space = T.encode(":", codec), T.encode(" ", codec)
+    while name.endswith(space):
+        name = name[:-len(space)]
+    if name.endswith(colon):
+        name = name[:-len(colon)]
+    return "".join(T.decode(b, codec) for b in T.absent_chars(name, absent[2]))
+
+
 # --------------------------------------------------------------------------
 # rewrap
 
@@ -286,6 +302,7 @@ class Stats:
         self.how = Counter()
         self.keys = defaultdict(list)  # box -> [(key, widths)]
         self.speakers = []  # [(key, px over)] talk boxes whose speaker's name is wider than the name bar
+        self.name_chars = []  # [(key, characters)] speaker names with a character the name bar's font lacks
 
     def add(self, box, how, key, widths, insert):
         self.strings[box] += 1
@@ -297,9 +314,11 @@ class Stats:
             self.bad_lines[box] += len(widths)
             self.keys[box].append((key, widths))
 
-    def add_speaker(self, key: str, over: int):
+    def add_speaker(self, key: str, over: int, missing: str = ""):
         if over:
             self.speakers.append((key, over))
+        if missing:
+            self.name_chars.append((key, missing))
 
     def lines(self, title: str) -> list[str]:
         out = [title]
@@ -307,7 +326,8 @@ class Stats:
             how = ", ".join(f"{n} {h}" for (b, h), n in sorted(self.how.items()) if b == box)
             out.append(f"  {label}: {self.strings[box]} strings ({how}); {self.bad_strings[box]} wider than the box, "
                        f"{self.bad_lines[box]} lines; {self.inserts[box]} carry a name or item word (not measured)")
-        out.append(f"  talk box speaker bar: {len(self.speakers)} names wider than the bar")
+        out.append(f"  talk box speaker bar: {len(self.speakers)} names wider than the bar, "
+                   f"{len(self.name_chars)} with a character its font lacks")
         return out
 
 
@@ -351,6 +371,7 @@ def measure_templates(templates: dict[str, dict], decomp: Path, region: str, aut
         templates, changes = apply_autofit(templates, decomp, region)
     stats = Stats()
     styles = T.load_metrics(decomp, region)
+    absent = T.load_absent(decomp, region)
     for stem, tpl in sorted(templates.items()):
         if not stem.startswith(("TALK", "DMG")):
             continue
@@ -365,7 +386,7 @@ def measure_templates(templates: dict[str, dict], decomp: Path, region: str, aut
             raw = T.encode(pt, codec)
             stats.add(box, how, e["key"], overflow(raw, box, style, en_raw), has_insert(raw))
             if box == TALK:
-                stats.add_speaker(e["key"], speaker_overflow(raw, styles))
+                stats.add_speaker(e["key"], speaker_overflow(raw, styles), speaker_missing_chars(raw, absent, codec))
     return stats, changes
 
 
@@ -377,6 +398,7 @@ def measure_pack(pack_dir: Path, runtime: Path | None, decomp: Path, region: str
     import build_pack as B
 
     styles = T.load_metrics(decomp, region)
+    absent = T.load_absent(decomp, region)
     style = styles[DIALOGUE_STYLE]
     codec = T.codec_for(region)
     boxes = Boxes(decomp)
@@ -398,7 +420,7 @@ def measure_pack(pack_dir: Path, runtime: Path | None, decomp: Path, region: str
                 continue
             stats.add(box, how, key, overflow(raw, box, style, en_raw), has_insert(raw))
             if box == TALK:
-                stats.add_speaker(key, speaker_overflow(raw, styles))
+                stats.add_speaker(key, speaker_overflow(raw, styles), speaker_missing_chars(raw, absent, codec))
     return stats
 
 
@@ -414,6 +436,10 @@ def write_report(path: Path, stats: Stats, changes: dict | None, title: str):
         for key, widths in sorted(stats.keys[box]):
             out.append(f"{key}\t{max(widths)} px\t{len(widths)} line(s)")
         out.append("")
+    out.append(f"== speaker names with a character the name bar's font lacks ({len(stats.name_chars)}) ==")
+    for key, chars in sorted(stats.name_chars):
+        out.append(f"{key}\t{chars!r}")
+    out.append("")
     out.append(f"== talk box speaker names wider than the name bar ({len(stats.speakers)}) ==")
     for key, over in sorted(stats.speakers):
         out.append(f"{key}\t{over} px over")
@@ -457,7 +483,7 @@ def main(argv=None) -> int:
     print("\n".join(stats.lines(title)))
     if a.report:
         write_report(a.report, stats, changes, title)
-    return 1 if sum(stats.bad_strings.values()) or stats.speakers else 0
+    return 1 if sum(stats.bad_strings.values()) or stats.speakers or stats.name_chars else 0
 
 
 if __name__ == "__main__":

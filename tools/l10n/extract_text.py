@@ -284,7 +284,8 @@ def load_glossary(path: Path | None) -> list[tuple[str, str]]:
 
 
 def check_file(path: Path, rep: Report, *, metrics: dict[int, T.Metrics] | None, max_width: int | None,
-               glossary: list[tuple[str, str]], against: dict | None, boxes: "F.Boxes | None" = None) -> None:
+               glossary: list[tuple[str, str]], against: dict | None, boxes: "F.Boxes | None" = None,
+               absent: dict | None = None) -> None:
     where = path.name
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
@@ -359,6 +360,10 @@ def check_file(path: Path, rep: Report, *, metrics: dict[int, T.Metrics] | None,
                         rep.error(w, f"a line is wider than the {box} box ({F.LIMITS[box][1]} px) and rewrapping "
                                      f"cannot fix it ({why}): reword it")
                 if box == F.TALK and metrics:
+                    lack = F.speaker_missing_chars(raw, absent, codec) if absent else ""
+                    if lack:
+                        rep.counts["name_glyph"] += 1
+                        rep.error(w, f"the speaker's name has {lack!r}, which the name bar's font cannot draw (a ring is shown)")
                     over = F.speaker_overflow(raw, metrics)
                     if over:
                         rep.counts["speaker_bar"] += 1
@@ -408,14 +413,15 @@ def check_paths(paths: list[Path], *, strict: bool, decomp: Path, max_width: int
                 d = json.loads(f.read_text(encoding="utf-8"))
                 ref_docs[d.get("stem")] = d
     gl = load_glossary(glossary)
-    boxes = None
+    boxes = absent = None
     if metrics:
         try:
             boxes = F.Boxes(decomp)
+            absent = T.load_absent(decomp, "eu")
         except OSError as ex:
             rep.warn("boxes", f"box widths not checked: {ex}")
     for f in files:
-        check_file(f, rep, metrics=metrics, max_width=max_width, glossary=gl, against=ref_docs, boxes=boxes)
+        check_file(f, rep, metrics=metrics, max_width=max_width, glossary=gl, against=ref_docs, boxes=boxes, absent=absent)
     if strict:
         rep.errors += [f"(strict) {w}" for w in rep.warnings]
         rep.warnings = []

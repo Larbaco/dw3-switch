@@ -426,3 +426,35 @@ def load_metrics(decomp: Path, version: str) -> dict[int, Metrics]:
         i = _glyph_array(src, "FONT_ICONS", size, version)
         out[size] = Metrics([c[9] + c[7] for c in g], [c[9] + c[7] for c in i])
     return out
+
+
+def load_absent(decomp: Path, version: str) -> dict[int, tuple[set[int], set[int]]]:
+    """{style: (icons, glyphs)}: the 1-based icon numbers and the 0-based glyph indices a style's sheet has
+    no cell for (type 255). The engine draws such a character as glyph 0 (a ring, "0"), not as a gap. The
+    name bar of a talk box (style 2) has no comma or colon, for example."""
+    src = (Path(decomp) / "src/engine/text/text_tools.c").read_text()
+    out = {}
+    for size in (1, 2, 3):
+        g = _glyph_array(src, "FONT_GLYPHS", size, version)
+        i = _glyph_array(src, "FONT_ICONS", size, version)
+        out[size] = ({n + 1 for n, c in enumerate(i) if c[0] == 255}, {n for n, c in enumerate(g) if c[0] == 255})
+    return out
+
+
+def absent_chars(raw: bytes, absent: tuple[set[int], set[int]]) -> list[bytes]:
+    """The characters of an encoded string (one icon pair or glyph byte each) its sheet has no cell for."""
+    icons, glyphs = absent
+    out, p = [], 0
+    while p < len(raw):
+        c = raw[p]
+        if c == 1:
+            if raw[p + 1] in icons:
+                out.append(raw[p:p + 2])
+            p += 2
+        elif c == 2:
+            p += CODE_LENGTHS[raw[p + 1]]
+        else:
+            if c >= 4 and c - 4 in glyphs:
+                out.append(raw[p:p + 1])
+            p += 1
+    return out

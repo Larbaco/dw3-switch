@@ -450,6 +450,7 @@ sentence; local only).
 | a dialogue line wider than **its box** (talk 148 px, message 252 px, `fit.py`) that the pack builder can rewrap | warning |
 | the same, when rewrapping cannot fix it (more than 3 lines, one word too wide, a wait in the page) | **error** |
 | a speaker's name (style 2) wider than the talk box's name bar | **error** |
+| a speaker's name with a character the name bar's font has no cell for (the comma, the colon but at the end) | **error** |
 | work-buffer placeholders in a different order | warning |
 | glossary term of the English missing in the PT (`--glossary`) | warning |
 | duplicate keys, bad JSON, unknown token | error |
@@ -662,8 +663,10 @@ The names, descriptions and menus screens go through windows sized per call site
 strings wider than every other EU language at their index (names 305, descriptions 207, menus 158): suspects, not
 proven overflows; each of those windows still has to be measured on screen.
 
-Seen, not investigated: a comma in a speaker's name (80 PT names, "Aiko, Líder de Classe") draws as a ring glyph in
-the name bar (style 2 has no comma); the English names have none.
+Found on the way, and now checked (`textfmt.load_absent`): the name bar's font (style 2) has no cell for the comma
+(icon 4) or the colon (icon 7); the engine draws the comma as a ring ("Aiko0 Líder de Classe" for "Aiko, Líder de
+Classe", seen on the PC build) and the colon as nothing. The English names have only a trailing colon ("Junior:"), so
+a name must not have a comma; `--check` and `--verify` say so. A dash (icon 26) is drawn.
 
 ## 8. OLED rows (owner checklist, from phase 2)
 

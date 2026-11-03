@@ -246,3 +246,55 @@ def test_check_errors_on_what_cannot_be_fitted_and_warns_on_what_will_be_rewrapp
     assert any("DMG200:0:1" in w and "rewraps it" in w for w in rep.warnings)
     assert any("DMG200:1:0" in e and "cannot fix it" in e for e in rep.errors)
     assert rep.counts["rewrap_talk"] == 1 and rep.counts["unfit_talk"] == 1
+
+
+# --------------------------------------------------------------------------
+# characters the name bar's font (style 2) has no cell for
+
+def fake_decomp_with_absent(tmp_path: Path) -> Path:
+    """Style 2 has no cell (type 255) for icon 4 (the comma) and icon 7 (the colon); everything else is drawn."""
+    root = tmp_path / "decomp"
+    src = root / "src" / "engine" / "text"
+    src.mkdir(parents=True)
+    parts = []
+    for size in (1, 2, 3):
+        for name, n in (("GLYPHS", 230), ("ICONS", 114)):
+            cells = []
+            for i in range(n):
+                kind = 255 if (size == 2 and name == "ICONS" and i + 1 in (4, 7)) else 1
+                cells.append("{ %d, 0, 0, 48, 232, 8, 12, 1, 0, 6, 12 }" % kind)
+            parts.append("Glyph FONT_%s_%d[%d] = {\n#if VERSION_US\n%s,\n#elif VERSION_EU\n%s,\n#endif\n};\n"
+                         % (name, size, n, ", ".join(cells), ", ".join(cells)))
+    (src / "text_tools.c").write_text("".join(parts))
+    return root
+
+
+def test_the_name_bar_font_lacks_the_comma(tmp_path):
+    absent = T.load_absent(fake_decomp_with_absent(tmp_path), "eu")
+    assert absent[2][0] == {4, 7} and absent[1][0] == set() and absent[2][1] == set()
+    miss = lambda t: F.speaker_missing_chars(enc(t), absent, EU)  # noqa: E731
+    assert miss("{start}Aiko, Lider{start}Hi") == ","  # the engine draws it as a ring
+    assert miss("{start}Aiko - Lider{start}Hi") == ""
+    assert miss("{start}Junior:{start}Hi") == "" and miss("{start}Junior: {start}Hi") == ""  # the English has it, it draws nothing
+    assert miss("{start}A: B{start}Hi") == ":"  # not at the end
+    assert miss("Hi, there") == ""  # no speaker: the body is style 1, which has a comma
+
+
+def test_check_and_verify_flag_a_comma_in_a_speaker_name(tmp_path):
+    import json
+
+    import build_pack as B
+    import extract_text as X
+
+    decomp = fake_decomp_with_absent(tmp_path)
+    rt, tpls = _rt_and_templates(tmp_path)
+    dmg = tpls["DMG200"]
+    dmg["entries"][1]["en"] = "{start}Mia{start}Hi{wait:2}{pg}Go"
+    dmg["entries"][1]["pt"] = "{start}Mia, Lider{start}Oi{wait:2}{pg}Va"
+    folder = tmp_path / "tpl"
+    folder.mkdir()
+    (folder / "DMG200.json").write_text(json.dumps(dmg))
+    rep = X.check_paths([folder], strict=False, decomp=decomp, max_width=None, glossary=None, against=None)
+    assert any("DMG200:0:1" in e and "cannot draw" in e for e in rep.errors) and rep.counts["name_glyph"] == 1
+    stats, _ = F.measure_templates({"DMG200": dmg}, decomp, "eu")
+    assert [k for k, _ in stats.name_chars] == ["DMG200:0:1"]
