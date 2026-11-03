@@ -37,6 +37,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(HERE))
 
+import fit as F  # noqa: E402
 import textfmt as T  # noqa: E402
 
 FORMAT = "dw3-l10n-v1"
@@ -173,14 +174,14 @@ def build_template(region: str, runtime: Path, metrics: dict[int, T.Metrics] | N
             text = T.decode(raw, codec)
             e = {"key": key, "en": text}
             if style is not None and region == "eu":
-                widths = [max(T.line_widths(raw, style))]
+                widths = [max(F.body_widths(raw, style))]  # the speaker's name is not a line of the box
                 lines = [max(T.page_lines(raw))]
                 for code, oc in parsed_others.items():
                     try:
                         oraw = oc.tables[t][i]
                     except IndexError:
                         continue
-                    widths.append(max(T.line_widths(oraw, style)))
+                    widths.append(max(F.body_widths(oraw, style)))
                     lines.append(max(T.page_lines(oraw)))
                 e["limit_px"] = max(widths)
                 e["max_lines"] = max(lines)
@@ -283,7 +284,7 @@ def load_glossary(path: Path | None) -> list[tuple[str, str]]:
 
 
 def check_file(path: Path, rep: Report, *, metrics: dict[int, T.Metrics] | None, max_width: int | None,
-               glossary: list[tuple[str, str]], against: dict | None) -> None:
+               glossary: list[tuple[str, str]], against: dict | None, boxes: "F.Boxes | None" = None) -> None:
     where = path.name
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
@@ -336,12 +337,32 @@ def check_file(path: Path, rep: Report, *, metrics: dict[int, T.Metrics] | None,
             if max(pages) > max_lines:
                 rep.error(w, f"{max(pages)} lines on a page, limit {max_lines}")
         if style is not None:
-            wid = max(T.line_widths(raw, style))
+            wid = max(F.body_widths(raw, style))
             lim = e.get("limit_px")
             if lim and wid > lim:
                 rep.warn(w, f"line is {wid} px, wider than every other EU language ({lim} px)")
             if max_width and wid > max_width:
                 rep.error(w, f"line is {wid} px, limit {max_width} px")
+            box = boxes.box(key, T.encode(en, codec), style)[0] if boxes and dialogue and en else None
+            if box:
+                # the box that really shows the string (tools/l10n/fit.py): a line outside it is what the
+                # player sees as text off the box. build_pack.py rewraps what fits; the rest needs rewording.
+                en_raw = T.encode(en, codec)
+                rep.counts["measured_" + box] += 1
+                if F.overflow(raw, box, style, en_raw):
+                    _, status, why = F.autofit(pt, box, codec, style, en_raw, metrics)
+                    if status == "rewrapped":
+                        rep.counts["rewrap_" + box] += 1
+                        rep.warn(w, f"a line is wider than the {box} box ({F.LIMITS[box][1]} px); build_pack.py rewraps it")
+                    else:
+                        rep.counts["unfit_" + box] += 1
+                        rep.error(w, f"a line is wider than the {box} box ({F.LIMITS[box][1]} px) and rewrapping "
+                                     f"cannot fix it ({why}): reword it")
+                if box == F.TALK and metrics:
+                    over = F.speaker_overflow(raw, metrics)
+                    if over:
+                        rep.counts["speaker_bar"] += 1
+                        rep.error(w, f"the speaker's name is {over} px wider than the name bar of the talk box")
         for term, want in glossary:
             if re.search(r"\b%s\b" % re.escape(term), en, re.I) and not re.search(re.escape(want), pt, re.I):
                 rep.warn(w, f"glossary: '{term}' should be '{want}'")
@@ -387,8 +408,14 @@ def check_paths(paths: list[Path], *, strict: bool, decomp: Path, max_width: int
                 d = json.loads(f.read_text(encoding="utf-8"))
                 ref_docs[d.get("stem")] = d
     gl = load_glossary(glossary)
+    boxes = None
+    if metrics:
+        try:
+            boxes = F.Boxes(decomp)
+        except OSError as ex:
+            rep.warn("boxes", f"box widths not checked: {ex}")
     for f in files:
-        check_file(f, rep, metrics=metrics, max_width=max_width, glossary=gl, against=ref_docs)
+        check_file(f, rep, metrics=metrics, max_width=max_width, glossary=gl, against=ref_docs, boxes=boxes)
     if strict:
         rep.errors += [f"(strict) {w}" for w in rep.warnings]
         rep.warnings = []

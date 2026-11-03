@@ -47,6 +47,7 @@ import hashlib
 import json
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -257,10 +258,20 @@ def source_files(runtime: Path, region: str) -> dict[str, tuple[int, bytes]]:
 
 
 def build_pack(templates: dict[str, dict], runtime: Path, region: str, lang: str, out: Path,
-               synthetic: str | None = None, with_keys: bool = False) -> dict:
-    """Write the pack folder. Returns the pack.json dict. Raises PackError on a bad input."""
+               synthetic: str | None = None, with_keys: bool = False,
+               autofit: Path | None = None, fit_changes: dict | None = None) -> dict:
+    """Write the pack folder. Returns the pack.json dict. Raises PackError on a bad input.
+
+    autofit: the decomp source folder; a dialogue string wider than the box that shows it is rewrapped
+    when it fits that box (tools/l10n/fit.py; the template is not changed). fit_changes, when given, is
+    filled with what it did."""
     if not LANG_RE.match(lang):
         raise PackError(f"bad language code {lang!r}")
+    if autofit is not None and not synthetic:
+        import fit as F
+        templates, changes = F.apply_autofit(templates, autofit, region)
+        if fit_changes is not None:
+            fit_changes.update(changes)
     codec = T.codec_for(region)
     sources = source_files(runtime, region)
     if not sources:
@@ -319,9 +330,12 @@ def build_pack(templates: dict[str, dict], runtime: Path, region: str, lang: str
 # --------------------------------------------------------------------------
 # verify: decode every output file and compare it with its source, string by string
 
-def verify_pack(pack_dir: Path, runtime: Path | None, region: str | None) -> list[str]:
+def verify_pack(pack_dir: Path, runtime: Path | None, region: str | None, decomp: Path | None = None) -> list[str]:
     """Problems of a pack folder (empty list = ok). With a runtime, also checks the source hashes
-    and that every string of the pack decodes and keeps the control codes of the English."""
+    and that every string of the pack decodes and keeps the control codes of the English. With the
+    decomp source, also that every dialogue line fits the box that shows it (tools/l10n/fit.py): a pack
+    can decode perfectly and still draw a line outside its box. A synthetic pack is not measured (the
+    stress pack is wide on purpose)."""
     problems: list[str] = []
     try:
         pack = json.loads((pack_dir / "pack.json").read_text(encoding="utf-8"))
@@ -379,6 +393,18 @@ def verify_pack(pack_dir: Path, runtime: Path | None, region: str | None) -> lis
                 if T.tokens(ta) != T.tokens(tb) and a != b:
                     problems.append(f"{f['stem']}:{t}:{i}: control codes differ from the English")
                     break
+    if decomp is not None and not pack.get("synthetic"):
+        import fit as F
+        try:
+            stats = F.measure_pack(pack_dir, runtime, decomp, reg)
+        except (OSError, T.TextFormatError) as ex:
+            problems.append(f"fit: cannot measure the lines ({ex})")
+        else:
+            for box in (F.TALK, F.MESSAGE):
+                for key, widths in sorted(stats.keys[box]):
+                    problems.append(f"{key}: a line is {max(widths)} px, the {box} box holds {F.LIMITS[box][1]} px")
+            for key, over in sorted(stats.speakers):
+                problems.append(f"{key}: the speaker's name is {over} px wider than the name bar")
     return problems
 
 
@@ -409,11 +435,14 @@ def main(argv=None) -> int:
     ap.add_argument("--out", type=Path, help="pack folder (default <runtime>/<region>/l10n/<lang>)")
     ap.add_argument("--decomp", type=Path, default=X.ROOT / "vendor" / "dw3_decomp", help="decomp source, for the glyph widths")
     ap.add_argument("--verify", type=Path, metavar="PACKDIR", help="check a pack folder (and its source hashes with the runtime)")
+    ap.add_argument("--no-autofit", action="store_true", help="do not rewrap dialogue lines that are wider than their box")
+    ap.add_argument("--no-fit", action="store_true", help="with --verify: do not measure the lines against their boxes")
+    ap.add_argument("--fit-report", type=Path, help="local report of the rewraps and of the lines that still do not fit (game text: git-ignored path)")
     a = ap.parse_args(argv)
 
     if a.verify:
         problems = verify_pack(a.verify, a.runtime if (a.runtime / a.region / f"files_{a.region}.json").exists() else None,
-                               a.region if a.region else None)
+                               a.region if a.region else None, decomp=None if a.no_fit else a.decomp)
         for p in problems:
             print("error:", p)
         print("pack %s: %s" % (a.verify, "ok" if not problems else "%d problems" % len(problems)))
@@ -430,13 +459,27 @@ def main(argv=None) -> int:
             tpls = synthetic_templates(a.synthetic, a.region, a.runtime, a.decomp)
         else:
             tpls = load_templates(a.templates)
-        pack = build_pack(tpls, a.runtime, a.region, a.lang, out, a.synthetic, a.keys)
+        changes: dict = {}
+        pack = build_pack(tpls, a.runtime, a.region, a.lang, out, a.synthetic, a.keys,
+                          None if (a.no_autofit or a.synthetic) else a.decomp, changes)
     except (PackError, OSError, T.TextFormatError, KeyError) as ex:
         print(f"error: {ex}", file=sys.stderr)
         return 1
     t = pack["totals"]
     print("pack %s: %d files, %d strings, %d translated, %d kept in English -> %s"
           % (a.lang, t["files"], t["strings"], t["translated"], t["fallback"], out))
+    if not a.synthetic:
+        import fit as F
+        stats = F.measure_pack(out, a.runtime if (a.runtime / a.region / f"files_{a.region}.json").exists() else None,
+                               a.decomp, a.region)
+        c = Counter(v[2] for v in changes.values())
+        print("\n".join(stats.lines("fit: %d rewrapped to fit their box, %d cannot be fitted" % (c["rewrapped"], c["unfit"]))))
+        if a.fit_report:
+            F.write_report(a.fit_report, stats, changes, "pack %s" % out)
+        left = sum(stats.bad_strings.values()) + len(stats.speakers)
+        if left:
+            print("warning: %d dialogue string(s) still do not fit their box or name bar; they need rewording "
+                  "(--fit-report FILE lists them)" % left, file=sys.stderr)
     return 0
 
 
