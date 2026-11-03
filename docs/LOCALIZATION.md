@@ -148,14 +148,25 @@ The port's own screens do not use this font: they draw with DejaVu Sans baked in
 
 ### 2.4 Line widths and box limits
 
-The text engine measures with `measureText` (sum of `advance + dx`, longest line).
-Boxes: the message box is a text window at (18, 176) with `setLines(3)`; talk boxes
-(`createTalkBox`, 4 types) have a speaker window and a 3-line message window; all use
-style 1 (14 px lines) unless a menu picks style 2 or 3. The widest line of any string
-in any of the five EU languages (style 1) is **261 px** (a memory card message); dialogue
-and event lines reach 252 px, descriptions 239 px, and **names stay under 160 px**
-(Digimon 97, items 93, techniques 101, cards 104, stages 115, areas 97, shops 129,
-inns 160 px).
+The text engine measures with `measureText` (sum of `advance + dx`, longest line) and **never wraps**. Two
+boxes show every dialogue string, and they are very different (decomp `talk_box.c`, `message_box.c`;
+`tools/l10n/screens.py` says which one a key reaches, from the stage scripts):
+
+| Box | Shown by | What the engine does | Width a line may have |
+|---|---|---|---|
+| **talk box** (a bubble by the actor; `type` 0..3) | every `TALK` string (an actor's `FieldTalk`) and the event strings whose `SCRIPT_TALK` kind is 0..3 | `createTalkBox` measures the text **after the speaker's name** (the name is another window, style 2) and makes the box as wide as the widest line, **clamped to 95..139 px**; 3 lines | **139 px** is the box; the frame ends **about 150 px** from where the text starts, so over **148 px** the text leaves the box (seen on the PC build, 2026-11-03). A name bar above the box is as wide as the box |
+| **message box** (the dark strip at the bottom, text at x=18) | the event strings whose `SCRIPT_TALK` kind is 4 | `createMessageBox`, a window with `setLines(3)` | **252 px** (the widest dialogue line of any EU language; the arrow is at x=292) |
+
+Of the 9,231 dialogue strings, 9,120 are talk box strings (4,927 reached by a script or an actor's table, 4,067
+`TALK` strings no table of the decomp lists, which are talk boxes anyway, and 126 event strings no script reaches,
+judged by their English width: wider than 155 px is a message box) and 111 are message box strings. The English
+original keeps almost every talk box line within 148 px (about ten strings are wider, up to 159 px and one at
+185), and a line is not counted as overflowing when the English line of the same string is as wide. Names, descriptions and menus go through
+windows sized per call site; they are not measured against a box yet (section 7b).
+
+The widest line of any string in any of the five EU languages (style 1) is **261 px** (a memory card message); dialogue
+and event lines reach 252 px, descriptions 239 px, and **names stay under 160 px** (Digimon 97, items 93, techniques
+101, cards 104, stages 115, areas 97, shops 129, inns 160 px).
 
 Spanish, French, Italian and German were fitted to the same boxes as English by their
 translators (total width of the dialogue is within +6% / -15% of English, and about
@@ -164,8 +175,10 @@ translators (total width of the dialogue is within +6% / -15% of English, and ab
 for every key `extract_text.py` stores `limit_px` (the widest line of the five EU
 languages at the same index, style 1) and `max_lines`, and `--check` warns when the
 PT line is wider than every other language and errors on more lines per page than the
-box has. The absolute box widths per call site are measured on screen in phase 2 (row
-L5 to L7).
+box has. That is a **relative** test (the other languages were fitted to *their* box, with
+the speaker's name left out of the width since 2026-11-03): it cannot tell a line that leaves a talk box
+(139 to 148 px) from one that does not. The talk box and the message box have absolute limits (above); the
+other windows' widths are still open (section 7b).
 
 ### 2.5 Names in battle and menus
 
@@ -434,11 +447,30 @@ sentence; local only).
 | lines per page <= `max_lines` (3 for dialogue) | error |
 | a line wider than every other EU language (`limit_px`) | warning |
 | absolute width with `--max-width` | error |
+| a dialogue line wider than **its box** (talk 148 px, message 252 px, `fit.py`) that the pack builder can rewrap | warning |
+| the same, when rewrapping cannot fix it (more than 3 lines, one word too wide, a wait in the page) | **error** |
+| a speaker's name (style 2) wider than the talk box's name bar | **error** |
 | work-buffer placeholders in a different order | warning |
 | glossary term of the English missing in the PT (`--glossary`) | warning |
 | duplicate keys, bad JSON, unknown token | error |
 | `--against`: missing, unknown key or changed English (a template from another disc) | error |
 | `--strict`: warnings and untranslated entries count as errors | |
+
+`tools/l10n/fit.py` is the measuring tool behind those rows and the pack builder:
+
+```
+python3 tools/l10n/fit.py --templates tmp/l10n/ptbr/eu [--no-autofit] [--report tmp/l10n/ptbr/fit-report.txt]
+python3 tools/l10n/fit.py --pack ~/.cache/dw3-switch/runtime/eu/l10n/ptbr [--report FILE]   # the shipped bytes
+```
+
+It prints counts only (strings, strings over the box, lines over the box, by box); `--report` writes the keys, the
+widths and the before and after text of every rewrap to a **git-ignored** file (it refuses another path).
+`build_pack.py` runs the same rewrap on the way in (`--no-autofit` to skip): a page with a line wider than its
+box is refilled with the same words, the fewest lines up to 3 and as evenly as a paragraph, to 139 px (the talk
+box) or 252 px (the message box), then to 148 px if 139 does not fit; the page count and every control code stay
+as they were, the template is not changed, and only a page that overflows is touched. What cannot be rewrapped is
+listed and needs rewording. `build_pack.py --verify` measures the finished pack and fails on every line outside its
+box (`--no-fit` skips it; a synthetic pack is not measured, the stress pack is wide on purpose).
 
 An empty `pt` is "not translated yet" (kept in English by the builder). Proven locally on
 all 12,652 + 12,119 strings: an identity translation (`pt = en`) passes with 0 errors
@@ -595,6 +627,43 @@ the English size of the same files beside it); the P5.1 sampler (`DW3_MEM_LOG`) 
 
 Two findings of the pass are in section 2.6a: the card file title buffer and the name buffers.
 
+
+## 7b. Why a verified pack drew a line outside its box (2026-11-03)
+
+Owner report (EU, PT-BR pack, `--verify` ok on 12,652 of 12,652 strings): in the opening-chapter talk box of the
+line with "...aquela boca grande...", "aquela" and "ela." were drawn outside the box.
+
+* **Cause 1, the check did not measure the box.** `--verify` only decodes the pack and compares control codes with
+  the English; `--check` compared a line with the widest line **the other four languages** have at that index (a
+  warning, and 1,198 of them, all ignored), or with `--max-width 252`, the width of the *message* box. The line is in
+  a talk box, which holds 139 px (148 at the frame).
+* **Cause 2, the width included the speaker's name** in the first line (`{start}Junior{start}` is another
+  window), so `limit_px` of the template was a little too high for every talk string.
+* **Cause 3, no tool rewrapped.** The translator broke lines by eye (that line: 170, 187 and 173 px for a box of
+  139); the engine never wraps.
+* **Not the cause:** the glyph widths (accents have the base letter's width; `textfmt.line_widths` follows
+  `measureText` in the decomp, and the screenshot agrees with it), and the earlier stress pass (its lines are as wide as the other languages' widest
+  line at the same index, which is the same relative test).
+
+Reproduced on the EU PC build with the owner's pack: the line in a talk box of the opening, "aquela" and "ela." fall
+out of the frame, and with the automatic rewrap a line of the same kind sits inside it (screenshots under
+`tmp/evidence/ptbr-fit/`, not in git: they carry game text).
+
+Measured on the owner's first draft pack (12,652 translated strings; the counts of `fit.py`):
+
+| Screen | Strings | Over the box before | Rewrapped by the builder | Still over (needs rewording) |
+|---|---|---|---|---|
+| talk box (limit 148 px) | 9,120 | 1,021 strings, 1,480 lines | 981 | 40 strings, 71 lines |
+| message box (limit 252 px) | 111 | 0 | 0 | 0 |
+| talk box speaker name bar | 4,780 with a speaker | 22 | 0 | 22 (the name is longer than the bar) |
+| names, descriptions, menus, battle, cards (no box measured) | 3,421 | not known | | |
+
+The names, descriptions and menus screens go through windows sized per call site. The relative test finds 670
+strings wider than every other EU language at their index (names 305, descriptions 207, menus 158): suspects, not
+proven overflows; each of those windows still has to be measured on screen.
+
+Seen, not investigated: a comma in a speaker's name (80 PT names, "Aiko, Líder de Classe") draws as a ring glyph in
+the name bar (style 2 has no comma); the English names have none.
 
 ## 8. OLED rows (owner checklist, from phase 2)
 
