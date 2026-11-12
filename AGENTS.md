@@ -65,6 +65,8 @@ Rules:
   PROVENANCE.md stating that no extracted or derived game asset (no tracing,
   img2img or upscaling of game images) was used. Anything derived from the
   owner's disc, including upscales, stays out of git.
+  Images under `docs/assets/` are listed in `docs/assets/PROVENANCE.md`;
+  add a row there when you add one.
 - Treat `vendor/dw3_decomp/` as upstream. Prefer patches/glue in `port/` or
   `platforms/`. Only edit the submodule when there is a clear upstream-bound
   fix, and say so explicitly.
