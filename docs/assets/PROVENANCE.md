@@ -18,8 +18,11 @@ images.
 | `candidates/` | Archive of earlier art candidates | [candidates/README](candidates/README.md) |
 | `title-menu/digivice-orange-blue-atlas.png` | Concept reference for the PC title-menu plaques | [TITLE_MENU_DESIGN](../TITLE_MENU_DESIGN.md) |
 
-The banner, the cover and the transparent logo were made with an image
-generator, using the approved master as the only reference image. The prompts
+The master began as a hand drawing by the owner. A diffusion model then
+stylised that drawing into the pixel-art emblem and wordmark, and the drawing
+was its only input image. The banner, the cover and the transparent logo were
+made with an image generator, using the approved master as the only reference
+image. The prompts
 are recorded in [BRANDING](../BRANDING.md). The icon is a plain resize of the
 master. The candidate in `candidates/icon-256/` was generated from a text prompt
 for an abstract wireframe design, and it shows no game art. None of these files
