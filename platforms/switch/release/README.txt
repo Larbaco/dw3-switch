@@ -1,51 +1,43 @@
-Digimon World 3 / 2003 for Switch (homebrew) - v0.9.0-preview.2
+Digimon World 3 / 2003 for Switch (homebrew) - v0.9.0 public beta
 
-Second preview of the 0.9.0 series: Brazilian Portuguese, a 3D resolution
-option, a sharper picture filter and a crash fix. Preview: unfinished, and
-the new items have not all been run on a console yet.
+The first public beta: the PS1 game's own code, rebuilt from the decompilation
+to run natively on the Switch. Playable from the start past the first boss on
+a Switch OLED. Expect bugs and the occasional crash; reports are welcome.
 
 ## Highlights
 
-- Brazilian Portuguese: Options > Display > Text language. The port's own
-  screens (Options, Help, Walkthrough, title) are in Portuguese with no extra
-  files. The game's own text needs a local text pack (not included, EU only for
-  now) at sdmc:/switch/dw3/eu/l10n/ptbr/; see docs/LOCALIZATION.md.
-- Internal resolution (Options > Display): renders the battle 3D at 2x or 3x.
-  On Switch it is capped at 2x for now.
-- Native res while turbo (Options > Display): fast-forward drops to normal
-  resolution and returns to your choice afterwards. ON by default.
-- Output filter (Options > Display): Nearest, Bilinear or Sharp bilinear
-  for the stretch to your screen. Nearest stays the default.
-- The Options background scrolls like the Items menu.
+- Widescreen 16:9 in the field, 3D battles and most menus.
+- Fast-forward (R3, 2x to 4x), text speed and encounter-rate options.
+- Auto-save per area, Continue on the title, US and EU saves carry over.
+- Nintendo or PlayStation button layout, any button remappable, Switch glyphs.
+- Full-screen map, in-game Help and a spoiler-safe walkthrough.
+- One .nro for US and EU; five languages on the EU disc.
 
 ## Fixed
 
-- Quitting with an nxlink host connected could end in a crash report.
+- Quitting with an nxlink host connected: a second crash cause is fixed.
+- Output filter Nearest: a few pixels could come from the neighbouring texel.
 
 ## Changed
 
-- Nintendo button layout and Switch glyphs are now the default (a saved
-  setting moves once; a custom layout is kept).
-- Map scaler default is FSR 1.
-- One port_options.cfg for both regions; the old us/eu files are merged once
-  and backed up as .bak.
+- Version numbers leave the preview series: this is v0.9.0. Settings, saves
+  and region folders from the 0.9.0 previews carry over unchanged.
 
 ## Known issues
 
-- The Portuguese wording is an AI draft, not yet reviewed. The text pack is EU only.
-- Internal resolution: handheld 2x did not hold 60 fps in 95% of battle
-  windows in the first OLED measurement, 3x is slower. The 2x cap and the
-  docked limit are not final; the OLED measurement is pending.
-- The nxlink quit fix is not yet confirmed on the OLED. Quitting through Sphaira or a
-  region restart may still show a crash report.
+- Quitting through Sphaira or restarting into the other region may still show
+  a crash report (fix included, not yet confirmed on a console).
 - The opening movie runs at about 15 fps.
+- EU: the sound can go wrong after many techs in battle (issue #188).
+- Internal resolution 2x does not always hold 60 fps in handheld battles.
+- The Portuguese wording is an AI draft, not yet reviewed (text pack EU only).
 
 ## Install / update
 
-Copy dw3-switch.nro to sdmc:/switch/ and start it from your launcher. Saves and
-region folders stay; your settings are migrated on the first start.
-You need your own disc image (US SLUS-01436 or EU SLES-03936). Setup, controls
-and crash reports: https://github.com/Larbaco/dw3-switch/blob/main/docs/PLAYER_GUIDE.md
+Copy dw3-switch.nro to sdmc:/switch/ and start it from your launcher.
+Put your disc (BIN + CUE) in sdmc:/switch/dw3/; the first start extracts it.
+Setup, controls, saves and crash reports:
+https://github.com/Larbaco/dw3-switch/blob/main/docs/PLAYER_GUIDE.md
 
 ## Downloads
 
@@ -55,8 +47,8 @@ and crash reports: https://github.com/Larbaco/dw3-switch/blob/main/docs/PLAYER_G
 
 ## Full changes
 
-https://github.com/Larbaco/dw3-switch/compare/v0.9.0-preview.1...v0.9.0-preview.2
-PRs: #408 #410 #412 #413 #414 #416 #417 #418 #419 #420
+https://github.com/Larbaco/dw3-switch/compare/v0.9.0-preview.2...v0.9.0
+PRs: #421 #423 #424 #425 #426 #427
 
 No game files are included: bring your own disc. Unofficial fan project, not
 affiliated with Bandai Namco or Nintendo. Digimon is a trademark of its owners.

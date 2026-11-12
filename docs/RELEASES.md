@@ -4,8 +4,8 @@ Each release ships ONE `.nro`, `dw3-switch.nro` (US + EU in one image), plus
 `dw3-switch-elf.zip` (the matching `.elf` for crash reports) and `README.txt`
 (the release notes). Never game data. Earlier previews shipped more files; each
 release page lists what it carries. **Pick the newest unless it is in "Do not
-install" below.** Every release so far is a GitHub prerelease; the first normal
-release will be `v0.9.0` (the public beta, see
+install" below.** `v0.9.0` (2026-11-12) is the public beta and the first
+normal release; every earlier tag is a GitHub prerelease (see
 [Release criteria](ROADMAP.md#release-criteria)).
 
 ## Naming
@@ -62,6 +62,7 @@ Preview numbers 11 to 17 were never published.
 
 | Release | What it was for |
 |---|---|
+| [0.9.0](https://github.com/Larbaco/dw3-switch/releases/tag/v0.9.0) | The public beta (owner decision after preview.2 ran past the first boss on the OLED); second nxlink exit fix, Nearest filter fix. |
 | [0.9.0-preview.2](https://github.com/Larbaco/dw3-switch/releases/tag/v0.9.0-preview.2) | Português (BR) for the port's screens, Internal resolution and Native res while turbo, Output filter, nxlink exit crash fix. |
 | [0.9.0-preview.1](https://github.com/Larbaco/dw3-switch/releases/tag/v0.9.0-preview.1) | First of the 0.9.0 series: regrouped Options, instant pause-menu exit, PRESS START only when ready, condensed walkthrough, SemVer numbering. |
 | [preview.57](https://github.com/Larbaco/dw3-switch/releases/tag/v0.6.5-preview.57) | Digivolve in battle no longer crashes; restart in the chosen region; Minus (Select) opens the map from the field; more walkthrough. |

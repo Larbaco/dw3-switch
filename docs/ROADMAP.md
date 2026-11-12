@@ -34,6 +34,17 @@ previews, `v0.9.0-preview.N`; the gates below are what turns them into releases.
      ([OPTIONS_REORG](OPTIONS_REORG.md): D1 reorganized tree and a row for every
      change, D2 `defaults_gen`, D3 `options_global`, D4 the scrolling
      background, D5 Map scaler).
+
+  **Released 2026-11-12 (owner decision), from `main`.** Gate 2 holds: D1 to
+  D5 are on `main` (#404, #408, #410, #412). Gate 1 was waived by the owner:
+  p57's A17.2 (BUG-p57-1, the relaunch exit crash) is fixed in #397 but not yet
+  confirmed on the console (G13), and the release notes list it as a known
+  issue. The owner played v0.9.0-preview.2 on the OLED from the start past the
+  first boss (US and EU) and called it stable. An EU Ryubing run of `a11fa6c`
+  (the code in v0.9.0) passed D1, D2, D4 and D5 with no `[E]` line or crash;
+  the log checks that failed expected PC output (platform, glyphs, row count)
+  and are not regressions. Evidence:
+  `tmp/evidence/20261112-1343-v090-d1245/` (owner's checkout).
 - **1.0 (`v1.0.0`).** All three must hold, with `v1.0.0-rc.N` release
   candidates before it:
   1. A full playthrough to the ending on the OLED, at least one region, played
