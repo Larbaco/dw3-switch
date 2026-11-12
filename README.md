@@ -176,7 +176,7 @@ Full table, PC keys and every hotkey: [HOTKEYS](docs/HOTKEYS.md) and the
 
 ## Status
 
-**Early preview, playable.** Tags are `v0.9.0-preview.N` until the 0.9 public beta (`v0.9.0`), then `v1.0.0-rc.N` and `v1.0.0`; see [RELEASES](docs/RELEASES.md#naming). On the PC the game plays from the title to the
+**Public beta, playable.** `v0.9.0` is the public beta; next come `v1.0.0-rc.N` and `v1.0.0`; see [RELEASES](docs/RELEASES.md#naming). On the PC the game plays from the title to the
 field and to battle, on a US or EU disc. On a Switch OLED the title, field,
 battles, movies, audio and saves work (US is the most tested; EU came later).
 
