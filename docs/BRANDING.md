@@ -3,6 +3,8 @@
 The owner selected **4C — retro pixel art** on 2026-10-14: a blue crystal
 inside a silver compass ring, orange pointers, cyan/orange orbital arcs and
 DW3NX lettering on navy. These are authored project graphics, not disc assets.
+The master started as the owner's own hand drawing, which a diffusion model
+stylised into this pixel art; the drawing was the only input image.
 
 ## Active assets
 

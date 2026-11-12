@@ -48,3 +48,9 @@ __pycache__/
 # Git worktrees
 .worktrees/
 sdlaudio.raw
+
+# Third-party walkthrough (EmeraldPhoenix, GameFAQs): all rights reserved,
+# not redistributable without the author's permission. Keep local only.
+/docs/Digimon World 3 - Guide and Walkthrough*
+/docs/assets/Digimon World 3 - Guide and Walkthrough*
+/docs/dw3-guide.html
